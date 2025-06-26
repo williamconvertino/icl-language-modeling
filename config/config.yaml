@@ -4,10 +4,10 @@ defaults:
   - dataset: tinystories
   - _self_
 
-hydra:
-  output_subdir: null
-  run:
-    dir: .
+# hydra:
+#   output_subdir: null
+#   run:
+#     dir: .
 
 mode: train
 device: cuda:0
