@@ -24,10 +24,8 @@ def initialize_dataset(tokenizer, num_workers):
     
 def get_splits(tokenizer, max_seq_len, num_workers=16):
     
-    required_files = ["train.bin", "val.bin", "test.bin"]
-
-    if any(not os.path.isfile(os.path.join(DATASET_PATH, f)) for f in required_files):
-        print("One or more .bin files are missing — building dataset...")
+    if not os.path.exists(DATASET_PATH):
+        print("Building dataset...")
         initialize_dataset(tokenizer, num_workers)
         
     return DiskDataset.get_splits(
