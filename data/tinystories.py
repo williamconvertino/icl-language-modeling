@@ -24,6 +24,9 @@ def initialize_dataset(tokenizer, num_workers):
     
 def get_splits(tokenizer, max_seq_len, num_workers=16):
     
+    print(DATASET_PATH)
+    print(os.path.exists(DATASET_PATH))
+    
     if not os.path.exists(DATASET_PATH):
         print("Building dataset...")
         initialize_dataset(tokenizer, num_workers)
