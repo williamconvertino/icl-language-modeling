@@ -1,0 +1,2 @@
+_target_: data.goodwiki.get_splits
+name: goodwiki
