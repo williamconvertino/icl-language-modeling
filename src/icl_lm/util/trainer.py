@@ -77,38 +77,38 @@ class Trainer:
         return loss
 
     def train(self):
-        
-        tqdm.write(f"Training model {self.model.name} on device {self.device}", file=self.log_file)
-        
-        self.model.to(self.device)
+        with open(self.log_file, "a") as f:
+            tqdm.write(f"Training model {self.model.name} on device {self.device}", file=f)
 
-        for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
-            self.model.train()
-            total_loss = 0.0
+            self.model.to(self.device)
 
-            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}", file=self.log_file)
-            for batch in pbar:
-                batch = batch.to(self.device)
-                self.optimizer.zero_grad()
+            for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
+                self.model.train()
+                total_loss = 0.0
 
-                loss = self.step_loss(batch)
-                self.scaler.scale(loss).backward()
+                pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}", file=f)
+                for batch in pbar:
+                    batch = batch.to(self.device)
+                    self.optimizer.zero_grad()
 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                self.scheduler.step()
+                    loss = self.step_loss(batch)
+                    self.scaler.scale(loss).backward()
 
-                total_loss += loss.item()
-                pbar.set_postfix(loss=loss.item())
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                    self.scheduler.step()
 
-            avg_train_loss = total_loss / len(self.train_dataloader)
-            val_loss = self.validate()
+                    total_loss += loss.item()
+                    pbar.set_postfix(loss=loss.item())
 
-            self.checkpointing.save_epoch(epoch, val_loss)
-            self.checkpointing.save_best(epoch, val_loss)
+                avg_train_loss = total_loss / len(self.train_dataloader)
+                val_loss = self.validate()
 
-            tqdm.write(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}", file=self.log_file)
+                self.checkpointing.save_epoch(epoch, val_loss)
+                self.checkpointing.save_best(epoch, val_loss)
+
+                tqdm.write(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}", file=f)
 
     def validate(self):
         self.model.eval()
