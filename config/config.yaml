@@ -4,5 +4,9 @@ defaults:
   - dataset: tinystories
   - _self_
 
+hydra:
+  run:
+    dir: null
+
 mode: train
 device: cuda:0
