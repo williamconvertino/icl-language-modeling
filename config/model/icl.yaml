@@ -14,4 +14,4 @@ icl_use_ln_qk: false
 share_icl_weights: false
 share_covariate_weights: false
 
-block_order: ["T", "I", "T", "I", "T", "I", "T", "I"]
+block_order: null

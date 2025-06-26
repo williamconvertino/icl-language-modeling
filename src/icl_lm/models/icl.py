@@ -128,6 +128,11 @@ class ICL(LMBase):
         
         self.embedding = nn.Embedding(config.vocab_size, config.hidden_dim)
         
+        if config.block_order is None:
+            config.block_order = ["T", "I"] * (config.n_layers // 2)
+            if config.n_layers % 2 != 0:
+                config.block_order = ["T"] + config.block_order
+        
         self.blocks = nn.ModuleList([TransformerBlock(config) if sym.lower() == "t" else ICLBlock(config) for sym in config.block_order])
                 
         self.ln_out = nn.LayerNorm(config.hidden_dim)
