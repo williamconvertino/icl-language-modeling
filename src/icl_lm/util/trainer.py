@@ -50,6 +50,12 @@ class Trainer:
 
         self.grad_clip = config.clip_grad_norm
 
+    def step_loss(self, batch):
+        input_tokens = batch[:, :-1]
+        target_tokens = batch[:, 1:]
+        target_tokens[:, 0] = self.tokenizer.pad_token_id # Necessary for efficient ICL training
+        return self.model(input_tokens, target_tokens, ignore_index=self.tokenizer.pad_token_id)
+
     def train(self):
         
         print(f"Training model {self.model.name} on device {self.device}")
@@ -65,7 +71,7 @@ class Trainer:
                 batch = batch.to(self.device)
                 self.optimizer.zero_grad()
 
-                loss = self.model(batch, training_mode=True, ignore_index=self.tokenizer.pad_token_id)
+                loss = self.step_loss(batch)
                 loss.backward()
 
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
@@ -90,7 +96,7 @@ class Trainer:
         with torch.no_grad():
             for batch in self.val_dataloader:
                 batch = batch.to(self.device)
-                loss = self.model(batch, training_mode=True, ignore_index=self.tokenizer.pad_token_id)
+                loss = self.step_loss(batch)
                 total_loss += loss.item()
 
         return total_loss / len(self.val_dataloader)

@@ -19,7 +19,7 @@ class ICLAttention(nn.Module):
             self.W_v = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
             self.W_o = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
         else:
-            self.W_o = nn.Linear(config.n_heads * config.d_hidden, config.d_hidden, bias=False)
+            self.W_o = nn.Linear(config.n_heads * config.hidden_dim, config.hidden_dim, bias=False)
         
         self.attn_scale = 1 / math.sqrt(config.hidden_dim)
         
@@ -37,6 +37,7 @@ class ICLAttention(nn.Module):
     def forward(self, q, k, v):
         
         B, S, E = q.shape
+        device = q.device
         
         q = self.W_q(q).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         k = self.W_k(k).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
@@ -44,7 +45,7 @@ class ICLAttention(nn.Module):
         if self.config.icl_use_wv:
             v = self.W_v(v).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         else:
-            v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.d_hidden).transpose(1, 2)
+            v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
         
         q = self.rotary_embeddings(q)
         k = self.rotary_embeddings(k)
@@ -52,7 +53,7 @@ class ICLAttention(nn.Module):
         if S == self.config.max_seq_len + 1:
             causal_mask = self.cached_training_mask
         else:
-            causal_mask = torch.triu(torch.ones(1, 1, S, S), diagonal=0).bool()
+            causal_mask = torch.triu(torch.ones(1, 1, S, S), diagonal=0).bool().to(device)
             causal_mask[0, 0] = False
         
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.attn_scale
@@ -62,12 +63,12 @@ class ICLAttention(nn.Module):
         attn_probs = self.drop_attn(attn_probs)
         
         attn_output = torch.matmul(attn_probs, v)
-        attn_output = attn_output.transpose(1, 2).contiguous().view(B, S, self.config.hidden_dim)
+        attn_output = attn_output.transpose(1, 2).contiguous()
         
         if self.config.icl_use_wv:
-            attn_output = attn_output.view(B, S, self.config.d_hidden)
+            attn_output = attn_output.view(B, S, self.config.hidden_dim)
         else:
-            attn_output = self.W_o(attn_output.view(B, S, self.config.n_heads * self.config.d_hidden))
+            attn_output = attn_output.view(B, S, self.config.n_heads * self.config.hidden_dim)
             
         attn_output = self.W_o(attn_output)
         attn_output = self.drop_resid(attn_output)
@@ -136,31 +137,29 @@ class ICL(LMBase):
         
         self.apply(self.init_weights)
     
-    def forward(self, input, training_mode=False, ignore_index=None):
+    def forward(self, input_tokens, target_tokens=None, ignore_index=None):
         
-        B, S, E = input.shape
-        device = input.device
+        device = input_tokens.device
         
-        if training_mode:
-            covariate_tokens = input[:, :-1]
-            target_tokens = input[:, 1:]
-        else:
-            covariate_tokens = torch.cat([torch.zeros(B, 1, E, device=device), input], dim=1)
-            target_tokens = torch.cat([input, torch.zeros(B, 1, E, device=device)], dim=1)
-        
-        covariates = self.embedding(covariate_tokens)
+        covariates = self.embedding(input_tokens)
         targets = self.embedding(target_tokens)
+        
+        if target_tokens is None:
+            B, S, E = covariates.shape
+            covariates = torch.cat([torch.zeros(B, 1, E, device=device), covariates], dim=1)
+            targets = torch.cat([targets, torch.zeros(B, 1, E, device=device)], dim=1)
+        
         functional_update = torch.zeros_like(covariates)
         
-        for block, sym in zip(self.transformer_blocks, self.config.block_order):
+        for block, sym in zip(self.blocks, self.config.block_order):
             if sym.lower() == "t":
                 covariates = block(covariates)
             else:
                 covariates, targets, functional_update = block(covariates, targets, functional_update)
         
-        logits = functional_update
+        x = functional_update
         
-        if training_mode:
+        if target_tokens is not None:
             x = self.ln_out(x)
             logits = self.lm_head(x)
             return self.compute_loss(logits, target_tokens, ignore_index=ignore_index)

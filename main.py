@@ -44,10 +44,16 @@ def main(config):
 def generate_model_name(model_config, dataset_name):
     cfg = OmegaConf.to_container(model_config, resolve=True)
     parts = [cfg["name"]]
+    
     for k, v in cfg.items():
         if k.startswith("_") or k == "name":
             continue
-        parts.append(f"{k}={v}")
+        if isinstance(v, bool):
+            if v:
+                parts.append(k)
+        else:
+            parts.append(f"{k}={v}")
+    
     parts.append(dataset_name)
     return "-".join(parts)
 

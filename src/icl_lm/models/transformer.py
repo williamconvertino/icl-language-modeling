@@ -107,20 +107,14 @@ class Transformer(LMBase):
         
         self.apply(self.init_weights)
     
-    def forward(self, input, training_mode=False, ignore_index=None):
-        
-        if training_mode:
-            input_tokens = input[:, :-1]
-            target_tokens = input[:, 1:]
-        else:
-            input_tokens = input
+    def forward(self, input_tokens, target_tokens=None, ignore_index=None):
         
         x = self.embedding(input_tokens)
         
         for block in self.transformer_blocks:
             x = block(x)
         
-        if training_mode:
+        if target_tokens is not None:
             x = self.ln_out(x)
             logits = self.lm_head(x)
             return self.compute_loss(logits, target_tokens, ignore_index=ignore_index)

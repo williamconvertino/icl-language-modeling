@@ -8,12 +8,6 @@ class LMBase(nn.Module):
         
     def compute_loss(self, logits, targets, ignore_index=None):
         
-        assert ignore_index is not None, "Must pass ignore_index when computing the loss (used for efficient training)."
-        
-        # Must ignore first token in prediction
-        # (Allows us to efficiently compute ICL loss)
-        targets[:, 0] = ignore_index
-
         loss = F.cross_entropy(
             logits.reshape(-1, logits.size(-1)),
             targets.reshape(-1),
