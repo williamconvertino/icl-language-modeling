@@ -11,9 +11,10 @@ class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
         self.model = model
+        self.splits = splits
         self.tokenizer = tokenizer
         self.device = device
-
+        
         self.train_dataloader = DataLoader(
             splits["train"],
             batch_size=config.batch_size,
@@ -50,6 +51,9 @@ class Trainer:
         self.grad_clip = config.clip_grad_norm
 
     def train(self):
+        
+        print(f"Training model {self.model.name} on device {self.device}")
+        
         self.model.to(self.device)
 
         for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
