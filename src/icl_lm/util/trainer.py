@@ -19,7 +19,7 @@ class Trainer:
         self.device = device
 
         os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, model.name, ".log")
+        self.log_file = os.path.join(log_dir, f"{model.name}.log")
         
         self.train_dataloader = DataLoader(
             splits["train"],
