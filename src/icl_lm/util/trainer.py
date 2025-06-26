@@ -18,8 +18,9 @@ class Trainer:
         self.tokenizer = tokenizer
         self.device = device
 
-        log_path = os.path.join(log_dir, model.name, "train.log")
-        self.log_file = open(log_path, "a")
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, model.name, ".log")
+        self.log_file = open(log_file, "a")
         
         self.train_dataloader = DataLoader(
             splits["train"],
