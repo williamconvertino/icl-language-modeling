@@ -6,30 +6,31 @@ from torch.optim import Optimizer
 from transformers import get_cosine_schedule_with_warmup
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
+from torch.amp import autocast, GradScaler
 from .checkpointing import Checkpointing
 
 class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
-        self.model = model
+        self.model = torch.compile(model)
         self.splits = splits
         self.tokenizer = tokenizer
         self.device = device
-        
+
         self.train_dataloader = DataLoader(
             splits["train"],
             batch_size=config.batch_size,
             num_workers=config.num_workers,
-            shuffle=True,
-            pin_memory=True
+            pin_memory=True,
+            shuffle=True
         )
 
         self.val_dataloader = DataLoader(
             splits["val"],
             batch_size=config.batch_size,
             num_workers=config.num_workers,
-            shuffle=False,
-            pin_memory=True
+            pin_memory=True,
+            shuffle=False
         )
 
         self.optimizer = instantiate(config.optimizer, params=self.model.parameters())
@@ -53,22 +54,26 @@ class Trainer:
 
         self.grad_clip = config.clip_grad_norm
 
+        self.autocast_dtype = getattr(torch, config.precision)
+        self.scaler = GradScaler()
+
     def step_loss(self, batch):
         input_tokens = batch[:, :-1]
         target_tokens = batch[:, 1:]
-        target_tokens[:, 0] = self.tokenizer.pad_token_id # Necessary for efficient ICL training
-        logits = self.model(input_tokens, target_tokens, inference_mode=False)
-        return F.cross_entropy(
-            logits.reshape(-1, logits.size(-1)),
-            target_tokens.reshape(-1),
-            ignore_index=self.tokenizer.pad_token_id,
-            reduction='mean'
-        )
+        target_tokens[:, 0] = self.tokenizer.pad_token_id
+
+        with autocast(device_type='cuda', dtype=self.autocast_dtype):
+            logits = self.model(input_tokens, target_tokens, inference_mode=False)
+            loss = F.cross_entropy(
+                logits.reshape(-1, logits.size(-1)),
+                target_tokens.reshape(-1),
+                ignore_index=self.tokenizer.pad_token_id,
+                reduction='mean'
+            )
+        return loss
 
     def train(self):
-        
         print(f"Training model {self.model.name} on device {self.device}")
-        
         self.model.to(self.device)
 
         for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
@@ -81,10 +86,11 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 loss = self.step_loss(batch)
-                loss.backward()
+                self.scaler.scale(loss).backward()
 
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-                self.optimizer.step()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 self.scheduler.step()
 
                 total_loss += loss.item()
