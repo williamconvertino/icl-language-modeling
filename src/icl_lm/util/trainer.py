@@ -11,15 +11,12 @@ from torch.amp import autocast, GradScaler
 from .checkpointing import Checkpointing
 
 class Trainer:
-    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, log_dir, device):
+    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
         self.model = torch.compile(model)
         self.splits = splits
         self.tokenizer = tokenizer
         self.device = device
-
-        os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, f"{model.name}.log")
         
         self.train_dataloader = DataLoader(
             splits["train"],
@@ -77,38 +74,37 @@ class Trainer:
         return loss
 
     def train(self):
-        with open(self.log_file, "a") as f:
-            tqdm.write(f"Training model {self.model.name} on device {self.device}", file=f)
+        tqdm.write(f"Training model {self.model.name} on device {self.device}")
 
-            self.model.to(self.device)
+        self.model.to(self.device)
 
-            for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
-                self.model.train()
-                total_loss = 0.0
+        for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
+            self.model.train()
+            total_loss = 0.0
 
-                pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}", file=f)
-                for batch in pbar:
-                    batch = batch.to(self.device)
-                    self.optimizer.zero_grad()
+            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}")
+            for batch in pbar:
+                batch = batch.to(self.device)
+                self.optimizer.zero_grad()
 
-                    loss = self.step_loss(batch)
-                    self.scaler.scale(loss).backward()
+                loss = self.step_loss(batch)
+                self.scaler.scale(loss).backward()
 
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
-                    self.scheduler.step()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+                self.scheduler.step()
 
-                    total_loss += loss.item()
-                    pbar.set_postfix(loss=loss.item())
+                total_loss += loss.item()
+                pbar.set_postfix(loss=loss.item())
 
-                avg_train_loss = total_loss / len(self.train_dataloader)
-                val_loss = self.validate()
+            avg_train_loss = total_loss / len(self.train_dataloader)
+            val_loss = self.validate()
 
-                self.checkpointing.save_epoch(epoch, val_loss)
-                self.checkpointing.save_best(epoch, val_loss)
+            self.checkpointing.save_epoch(epoch, val_loss)
+            self.checkpointing.save_best(epoch, val_loss)
 
-                tqdm.write(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}", file=f)
+            tqdm.write(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}")
 
     def validate(self):
         self.model.eval()
