@@ -1,0 +1,7 @@
+defaults:
+  - model: transformer
+  - training: base
+  - dataset: tinystories
+
+mode: train
+device: cuda:0

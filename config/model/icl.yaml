@@ -1,0 +1,5 @@
+defaults:
+  - base
+
+_target_: icl_lm.icl_lm.models.ICL
+name: icl

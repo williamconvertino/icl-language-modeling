@@ -1,0 +1,5 @@
+defaults:
+  - base
+
+_target_: icl_lm.models.Transformer
+name: transformer
