@@ -13,7 +13,8 @@ from .checkpointing import Checkpointing
 class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
-        self.model = torch.compile(model)
+        # self.model = torch.compile(model)
+        self.model = model
         self.splits = splits
         self.tokenizer = tokenizer
         self.device = device
@@ -36,7 +37,7 @@ class Trainer:
 
         self.optimizer = instantiate(config.optimizer, params=self.model.parameters())
         training_steps = len(self.train_dataloader) * config.epochs
-        warmup_steps = int(training_steps * 0.05)
+        warmup_steps = int(training_steps * 0.1)
 
         self.scheduler = instantiate(
             config.scheduler,
