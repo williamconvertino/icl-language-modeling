@@ -1,6 +1,7 @@
 defaults:
   - optimizer: adam
   - scheduler: cosine
+  - _self_
   
 epochs: 10
 
