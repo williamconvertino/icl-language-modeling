@@ -1,3 +1,4 @@
+import os
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
@@ -10,13 +11,16 @@ from torch.amp import autocast, GradScaler
 from .checkpointing import Checkpointing
 
 class Trainer:
-    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
+    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, log_dir, device):
         self.config = config
         self.model = torch.compile(model)
         self.splits = splits
         self.tokenizer = tokenizer
         self.device = device
 
+        log_path = os.path.join(log_dir, model.name, "train.log")
+        self.log_file = open(log_path, "a")
+        
         self.train_dataloader = DataLoader(
             splits["train"],
             batch_size=config.batch_size,
@@ -73,14 +77,16 @@ class Trainer:
         return loss
 
     def train(self):
-        print(f"Training model {self.model.name} on device {self.device}")
+        
+        tqdm.write(f"Training model {self.model.name} on device {self.device}", file=self.log_file)
+        
         self.model.to(self.device)
 
         for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
             self.model.train()
             total_loss = 0.0
 
-            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}")
+            pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}", file=self.log_file)
             for batch in pbar:
                 batch = batch.to(self.device)
                 self.optimizer.zero_grad()
@@ -102,7 +108,7 @@ class Trainer:
             self.checkpointing.save_epoch(epoch, val_loss)
             self.checkpointing.save_best(epoch, val_loss)
 
-            print(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}")
+            tqdm.write(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}", file=self.log_file)
 
     def validate(self):
         self.model.eval()

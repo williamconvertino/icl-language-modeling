@@ -23,11 +23,12 @@ def main(config):
     )
 
     checkpoint_dir = os.path.join("outputs", "checkpoints")
+    log_dir = os.path.join("outputs", "logs")
 
     device = torch.device(config.device)
 
     if config.mode == "train":
-        trainer = Trainer(config.training, model, splits, tokenizer, checkpoint_dir, device)
+        trainer = Trainer(config.training, model, splits, tokenizer, checkpoint_dir, log_dir, device)
         if config.training.resume:
             trainer.checkpointing.load_recent()
         trainer.train()
