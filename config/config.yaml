@@ -5,8 +5,9 @@ defaults:
   - _self_
 
 hydra:
+  output_subdir: null
   run:
-    dir: null
+    dir: .
 
 mode: train
 device: cuda:0
