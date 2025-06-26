@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
 from transformers import get_cosine_schedule_with_warmup
@@ -19,14 +20,16 @@ class Trainer:
             splits["train"],
             batch_size=config.batch_size,
             num_workers=config.num_workers,
-            shuffle=True
+            shuffle=True,
+            pin_memory=True
         )
 
         self.val_dataloader = DataLoader(
             splits["val"],
             batch_size=config.batch_size,
             num_workers=config.num_workers,
-            shuffle=False
+            shuffle=False,
+            pin_memory=True
         )
 
         self.optimizer = instantiate(config.optimizer, params=self.model.parameters())
@@ -54,7 +57,13 @@ class Trainer:
         input_tokens = batch[:, :-1]
         target_tokens = batch[:, 1:]
         target_tokens[:, 0] = self.tokenizer.pad_token_id # Necessary for efficient ICL training
-        return self.model(input_tokens, target_tokens, ignore_index=self.tokenizer.pad_token_id)
+        logits = self.model(input_tokens, target_tokens, inference_mode=False)
+        return F.cross_entropy(
+            logits.reshape(-1, logits.size(-1)),
+            target_tokens.reshape(-1),
+            ignore_index=self.tokenizer.pad_token_id,
+            reduction='mean'
+        )
 
     def train(self):
         

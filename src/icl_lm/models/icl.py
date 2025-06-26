@@ -137,14 +137,14 @@ class ICL(LMBase):
         
         self.apply(self.init_weights)
     
-    def forward(self, input_tokens, target_tokens=None, ignore_index=None):
+    def forward(self, input_tokens, target_tokens=None, inference_mode=True):
         
         device = input_tokens.device
         
         covariates = self.embedding(input_tokens)
         targets = self.embedding(target_tokens)
         
-        if target_tokens is None:
+        if inference_mode:
             B, S, E = covariates.shape
             covariates = torch.cat([torch.zeros(B, 1, E, device=device), covariates], dim=1)
             targets = torch.cat([targets, torch.zeros(B, 1, E, device=device)], dim=1)
@@ -159,11 +159,10 @@ class ICL(LMBase):
         
         x = functional_update
         
-        if target_tokens is not None:
-            x = self.ln_out(x)
-            logits = self.lm_head(x)
-            return self.compute_loss(logits, target_tokens, ignore_index=ignore_index)
-        else:
-            x = self.ln_out(x[:, [-1], :])
-            logits = self.lm_head(x)
-            return logits
+        if inference_mode:
+            x = x[:, [-1], :]
+            
+        x = self.ln_out(x)
+        logits = self.lm_head(x)
+        
+        return logits

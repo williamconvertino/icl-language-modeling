@@ -5,17 +5,6 @@ import torch.nn.functional as F
 class LMBase(nn.Module):
     def __init__(self):
         super().__init__()
-        
-    def compute_loss(self, logits, targets, ignore_index=None):
-        
-        loss = F.cross_entropy(
-            logits.reshape(-1, logits.size(-1)),
-            targets.reshape(-1),
-            ignore_index=ignore_index,
-            reduction='mean'
-        )
-
-        return loss
 
     @torch.no_grad()
     def generate(self, input_ids, max_length, temperature=1.0, top_p=0.9, eos_token_id=None):

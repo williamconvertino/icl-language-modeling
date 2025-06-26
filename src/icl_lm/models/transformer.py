@@ -23,7 +23,7 @@ class Attention(nn.Module):
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
         
-        self.register_buffer("cached_training_mask", torch.triu(torch.ones(1, 1, config.max_seq_len, config.max_seq_len), diagonal=1).bool(), persistent=False)
+        self.register_buffer("cached_training_mask", torch.triu(torch.ones(1, 1, config.max_seq_len - 1, config.max_seq_len - 1), diagonal=1).bool(), persistent=False)
 
     def forward(self, x):
         
@@ -38,7 +38,7 @@ class Attention(nn.Module):
         q = self.rotary_embeddings(q)
         k = self.rotary_embeddings(k)
         
-        if S == self.config.max_seq_len:
+        if S == self.config.max_seq_len - 1:
             causal_mask = self.cached_training_mask
         else:
             causal_mask = torch.triu(torch.ones(S, S), diagonal=1).bool().to(q.device)
@@ -107,18 +107,17 @@ class Transformer(LMBase):
         
         self.apply(self.init_weights)
     
-    def forward(self, input_tokens, target_tokens=None, ignore_index=None):
+    def forward(self, input_tokens, target_tokens=None, inference_mode=True):
         
         x = self.embedding(input_tokens)
         
         for block in self.transformer_blocks:
             x = block(x)
         
-        if target_tokens is not None:
-            x = self.ln_out(x)
-            logits = self.lm_head(x)
-            return self.compute_loss(logits, target_tokens, ignore_index=ignore_index)
-        else:
-            x = self.ln_out(x[:, [-1], :])
-            logits = self.lm_head(x)
-            return logits
+        if inference_mode:
+            x = x[:, [-1], :]
+            
+        x = self.ln_out(x)
+        logits = self.lm_head(x)
+        
+        return logits
