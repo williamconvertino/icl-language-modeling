@@ -18,4 +18,5 @@ set -e
 source ~/.bashrc
 conda activate icl
 
-python ../main.py "$@"
+cd ..
+python main.py "$@"
