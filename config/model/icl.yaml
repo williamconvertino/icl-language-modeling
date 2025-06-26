@@ -11,7 +11,9 @@ icl_use_skip_mlp: false
 icl_use_ln_v: false
 icl_use_ln_qk: false
 
-share_icl_weights: false
-share_covariate_weights: false
+share_covariate_attn: false
+share_covariate_mlp: false
+share_icl_attn: false
+share_icl_mlp: false
 
 block_order: null

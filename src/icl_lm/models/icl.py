@@ -140,7 +140,67 @@ class ICL(LMBase):
         self.lm_head = nn.Linear(config.hidden_dim, config.vocab_size, bias=False)
         self.lm_head.weight = self.embedding.weight
         
+        if self.config.share_covariate_attn:
+            self.share_covariate_attn()
+        if self.config.share_covariate_mlp:
+            self.share_covariate_mlp()
+        if self.config.share_icl_attn:
+            self.share_icl_attn()
+        if self.config.share_icl_mlp:
+            self.share_icl_mlp()
+        
         self.apply(self.init_weights)
+    
+    def share_covariate_attn(self):
+        W_q = None
+        W_k = None
+        W_v = None
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() == "t":
+                if W_q is None:
+                    W_q = block.attention.W_q
+                    W_k = block.attention.W_k
+                    W_v = block.attention.W_v
+                else:
+                    block.attention.W_q = W_q
+                    block.attention.W_k = W_k
+                    block.attention.W_v = W_v
+    
+    def share_icl_attn(self):
+        W_q = None
+        W_k = None
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() != "t":
+                if W_q is None:
+                    W_q = block.attention.W_q
+                    W_k = block.attention.W_k
+                else:
+                    block.attention.W_q = W_q
+                    block.attention.W_k = W_k
+                    
+    def share_covariate_mlp(self):
+        fc_1 = None
+        fc_2 = None
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() == "t":
+                if fc_1 is None:
+                    fc_1 = block.mlp.fc_1
+                    fc_2 = block.mlp.fc_2
+                else:
+                    block.mlp.fc_1 = fc_1
+                    block.mlp.fc_2 = fc_2
+    
+    def share_icl_mlp(self):
+        fc_1 = None
+        fc_2 = None
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() != "t":
+                if fc_1 is None:
+                    fc_1 = block.mlp.fc_1
+                    fc_2 = block.mlp.fc_2
+                else:
+                    block.mlp.fc_1 = fc_1
+                    block.mlp.fc_2 = fc_2
     
     def forward(self, input_tokens, target_tokens=None, inference_mode=True):
         
