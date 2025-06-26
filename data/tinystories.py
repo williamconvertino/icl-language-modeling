@@ -3,7 +3,7 @@ from datasets import load_dataset, DatasetDict
 from icl_lm.data import Tokenizer
 from icl_lm.data import DiskDataset
 
-DATASET_PATH = os.path.join(os.path.dirname(__file__), "datasets", "tinystories_v2")
+DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "datasets", "tinystories_v2")
 DATASET_PATH = os.path.abspath(DATASET_PATH)
 
 def initialize_dataset(tokenizer, num_workers):
@@ -23,10 +23,7 @@ def initialize_dataset(tokenizer, num_workers):
     DiskDataset.build_from_dataset(dataset_dict, tokenizer, "datasets/tinystories_v2", num_workers=num_workers)
     
 def get_splits(tokenizer, max_seq_len, num_workers=16):
-    
-    print(DATASET_PATH)
-    print(os.path.exists(DATASET_PATH))
-    
+
     if not os.path.exists(DATASET_PATH):
         print("Building dataset...")
         initialize_dataset(tokenizer, num_workers)
