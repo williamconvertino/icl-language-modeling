@@ -4,3 +4,14 @@ defaults:
 
 _target_: icl_lm.icl_lm.models.ICL
 name: icl
+
+icl_use_wv: false
+icl_use_ln_mlp: false
+icl_use_skip_mlp: false
+icl_use_ln_v: false
+icl_use_ln_qk: false
+
+share_icl_weights: false
+share_covariate_weights: false
+
+block_order: ["T", "I", "T", "I", "T", "I", "T", "I"]

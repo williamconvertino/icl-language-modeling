@@ -12,7 +12,6 @@ class LMBase(nn.Module):
         
         # Must ignore first token in prediction
         # (Allows us to efficiently compute ICL loss)
-        targets = targets.clone()
         targets[:, 0] = ignore_index
 
         loss = F.cross_entropy(
@@ -29,8 +28,7 @@ class LMBase(nn.Module):
         self.eval()
 
         generated = input_ids.clone()
-        device = input_ids.device
-
+        
         for _ in range(max_length):
             logits = self(generated, return_loss=False)
             logits = logits[:, -1, :] / temperature
