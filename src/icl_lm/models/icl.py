@@ -29,10 +29,10 @@ class ICLAttention(nn.Module):
         self.drop_resid = nn.Dropout(0.1)
         
         # Mask diagonal (ignoring the first to prevent softmax issues) 
-        cached_training_mask = torch.triu(torch.ones(1, 1, config.max_seq_len + 1, config.max_seq_len + 1), diagonal=0).bool()
-        cached_training_mask[0, 0] = False
+        # cached_training_mask = torch.triu(torch.ones(1, 1, config.max_seq_len + 1, config.max_seq_len + 1), diagonal=0).bool()
+        # cached_training_mask[0, 0] = False
         
-        self.register_buffer("cached_training_mask", cached_training_mask, persistent=False)
+        # self.register_buffer("cached_training_mask", cached_training_mask, persistent=False)
 
     def forward(self, q, k, v):
         
@@ -50,11 +50,11 @@ class ICLAttention(nn.Module):
         q = self.rotary_embeddings(q)
         k = self.rotary_embeddings(k)
         
-        if S == self.config.max_seq_len + 1:
-            causal_mask = self.cached_training_mask
-        else:
-            causal_mask = torch.triu(torch.ones(1, 1, S, S), diagonal=0).bool().to(device)
-            causal_mask[0, 0] = False
+        # if S == self.config.max_seq_len + 1:
+        #     causal_mask = self.cached_training_mask
+        # else:
+        causal_mask = torch.triu(torch.ones(1, 1, S, S), diagonal=0).bool().to(device)
+        causal_mask[0, 0] = False
         
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.attn_scale
         attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
