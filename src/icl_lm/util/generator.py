@@ -38,7 +38,7 @@ class Generator:
                 sample = self.test_data[i]
                 input_tokens = torch.tensor(sample[:self.max_len], dtype=torch.long, device=self.device)
 
-                decoded_full = self.tokenizer.decode(sample)
+                decoded_full = self.tokenizer.decode(sample.tolist())
 
                 prompt_len = max(1, len(input_tokens) // 2)
                 prompt = input_tokens[:prompt_len]
