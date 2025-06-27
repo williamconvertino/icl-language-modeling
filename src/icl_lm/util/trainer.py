@@ -62,10 +62,10 @@ class Trainer:
     def step_loss(self, batch):
         input_tokens = batch[:, :-1]
         target_tokens = batch[:, 1:]
-        target_tokens[:, 0] = self.tokenizer.pad_token_id
+        # target_tokens[:, 0] = self.tokenizer.pad_token_id
 
         with autocast(device_type='cuda', dtype=self.autocast_dtype):
-            logits = self.model(input_tokens, target_tokens, inference_mode=False)
+            logits = self.model(input_tokens)
             loss = F.cross_entropy(
                 logits.reshape(-1, logits.size(-1)),
                 target_tokens.reshape(-1),

@@ -107,15 +107,12 @@ class Transformer(LMBase):
         
         self.apply(self.init_weights)
     
-    def forward(self, input_tokens, target_tokens=None, inference_mode=True):
+    def forward(self, input_tokens):
         
         x = self.embedding(input_tokens)
         
         for block in self.transformer_blocks:
             x = block(x)
-        
-        if inference_mode:
-            x = x[:, [-1], :]
             
         x = self.ln_out(x)
         logits = self.lm_head(x)
