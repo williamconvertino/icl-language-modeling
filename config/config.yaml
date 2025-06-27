@@ -1,6 +1,7 @@
 defaults:
   - model: transformer
   - training: base
+  - generation: base
   - dataset: tinystories
   - _self_
 
