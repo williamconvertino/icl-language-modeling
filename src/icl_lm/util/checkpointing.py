@@ -65,7 +65,7 @@ class Checkpointing:
         best_ckpts = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
         if best_ckpts:
             best_ckpt = sorted(best_ckpts)[-1]
-            state = torch.load(best_ckpt, map_location=self.device)
+            state = torch.load(best_ckpt, map_location=self.device, weights_only=False)
             self.model.load_state_dict(state["model"])
             print(f"Loaded best model from {best_ckpt}")
         else:
@@ -83,7 +83,7 @@ class Checkpointing:
                 return int(match.group(1)) if match else -1
 
             most_recent = max(epoch_ckpts, key=extract_epoch)
-            state = torch.load(most_recent, map_location=self.device)
+            state = torch.load(most_recent, map_location=self.device, weights_only=False)
             self.model.load_state_dict(state["model"])
             self.optimizer.load_state_dict(state["optimizer"])
             self.scheduler.load_state_dict(state["scheduler"])
