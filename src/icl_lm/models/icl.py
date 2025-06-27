@@ -28,12 +28,6 @@ class ICLAttention(nn.Module):
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
         
-        # Mask diagonal (ignoring the first to prevent softmax issues) 
-        # cached_training_mask = torch.triu(torch.ones(1, 1, config.max_seq_len + 1, config.max_seq_len + 1), diagonal=0).bool()
-        # cached_training_mask[0, 0] = False
-        
-        # self.register_buffer("cached_training_mask", cached_training_mask, persistent=False)
-
     def forward(self, q, k, v):
         
         B, S, E = q.shape
@@ -49,10 +43,7 @@ class ICLAttention(nn.Module):
         
         q = self.rotary_embeddings(q)
         k = self.rotary_embeddings(k)
-        
-        # if S == self.config.max_seq_len + 1:
-        #     causal_mask = self.cached_training_mask
-        # else:
+
         causal_mask = torch.triu(torch.ones(1, 1, S, S), diagonal=0).bool().to(device)
         causal_mask[0, 0] = False
         
@@ -128,7 +119,7 @@ class ICL(LMBase):
         
         self.embedding = nn.Embedding(config.vocab_size, config.hidden_dim)
         
-        self.x_1 = nn.Parameter(torch.randn(1, 1, config.d_embed))
+        self.x_1 = nn.Parameter(torch.randn(1, 1, config.hidden_dim))
         
         if config.block_order is None:
             config.block_order = ["T", "I"] * (config.n_layers // 2)
