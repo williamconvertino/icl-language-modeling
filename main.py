@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 
 from icl_lm.data.tokenizer import Tokenizer
 from icl_lm.util.trainer import Trainer
+from icl_lm.util.generator import Generator
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
 def main(config):
@@ -23,6 +24,7 @@ def main(config):
     )
 
     checkpoint_dir = os.path.join("outputs", "checkpoints")
+    generation_dir = os.path.join("outputs", "generations")
 
     device = torch.device(config.device)
 
@@ -31,13 +33,12 @@ def main(config):
         if config.training.resume:
             trainer.checkpointing.load_recent()
         trainer.train()
-
     elif config.mode == "eval":
         print("Eval mode is not yet implemented.")
-
     elif config.mode == "generate":
-        print("Generate mode is not yet implemented.")
-
+        generator = Generator(config.generation, model, splits, tokenizer, generation_dir, device)
+        trainer.checkpointing.load_best()
+        generator.generate()
     else:
         raise ValueError(f"Unsupported mode: {config.mode}")
 
