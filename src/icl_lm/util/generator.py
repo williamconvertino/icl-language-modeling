@@ -35,7 +35,7 @@ class Generator:
     def generate(self):
         with open(self.out_path, "w", encoding="utf-8") as f:
             for i in tqdm(range(self.num_samples), desc="Generating samples"):
-                sample = self.test_data[i]["tokens"]
+                sample = self.test_data[i]
                 input_tokens = torch.tensor(sample[:self.max_len], dtype=torch.long, device=self.device)
 
                 decoded_full = self.tokenizer.decode(sample)
