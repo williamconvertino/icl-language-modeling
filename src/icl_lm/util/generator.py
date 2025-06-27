@@ -2,9 +2,10 @@ import os
 import torch
 from tqdm import tqdm
 import torch.nn.functional as F
+from .checkpointing import Checkpointing
 
 class Generator:
-    def __init__(self, config, model, splits, tokenizer, generation_dir, device):
+    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, generation_dir, device):
         self.config = config
         self.model = model.to(device)
         self.tokenizer = tokenizer
@@ -23,6 +24,12 @@ class Generator:
 
         os.makedirs(os.path.join(generation_dir, splits["name"]), exist_ok=True)
         self.out_path = os.path.join(generation_dir, splits["name"], f"{model.name}.log")
+        
+        self.checkpointing = Checkpointing(
+            model=self.model,
+            checkpoint_dir=checkpoint_dir,
+            device=device
+        )
 
     @torch.no_grad()
     def generate(self):

@@ -37,8 +37,8 @@ def main(config):
     elif config.mode == "eval":
         print("Eval mode is not yet implemented.")
     elif config.mode == "generate":
-        generator = Generator(config.generation, model, splits, tokenizer, generation_dir, device)
-        trainer.checkpointing.load_best()
+        generator = Generator(config.generation, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
+        generator.checkpointing.load_best()
         generator.generate()
     else:
         raise ValueError(f"Unsupported mode: {config.mode}")
