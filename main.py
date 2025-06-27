@@ -22,6 +22,7 @@ def main(config):
         max_seq_len=config.model.max_seq_len,
         num_workers=config.training.num_workers
     )
+    splits.name = config.dataset.name
 
     checkpoint_dir = os.path.join("outputs", "checkpoints")
     generation_dir = os.path.join("outputs", "generations")

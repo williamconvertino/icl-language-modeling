@@ -21,8 +21,8 @@ class Generator:
         self.temperature = config.temperature
         self.top_p = config.top_p
 
-        os.makedirs(os.path.join(generation_dir, config.dataset_name), exist_ok=True)
-        self.out_path = os.path.join(generation_dir, config.dataset_name, f"{model.name}.log")
+        os.makedirs(os.path.join(generation_dir, splits.name), exist_ok=True)
+        self.out_path = os.path.join(generation_dir, splits.name, f"{model.name}.log")
 
     @torch.no_grad()
     def generate(self):
