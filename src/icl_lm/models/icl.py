@@ -128,6 +128,8 @@ class ICL(LMBase):
         
         self.embedding = nn.Embedding(config.vocab_size, config.hidden_dim)
         
+        self.x_1 = nn.Parameter(torch.randn(1, 1, config.d_embed))
+        
         if config.block_order is None:
             config.block_order = ["T", "I"] * (config.n_layers // 2)
             if config.n_layers % 2 != 0:
@@ -202,19 +204,20 @@ class ICL(LMBase):
                     block.mlp.fc_1 = fc_1
                     block.mlp.fc_2 = fc_2
     
-    def forward(self, input_tokens, target_tokens=None, inference_mode=True):
+    def forward(self, input_tokens):
         
-        device = input_tokens.device
+        x = self.embedding(input_tokens) # (B, S, E)
         
-        covariates = self.embedding(input_tokens)
-        targets = self.embedding(target_tokens)
+        B, S, E = x.shape
+        device = x.device
         
-        if inference_mode:
-            B, S, E = covariates.shape
-            covariates = torch.cat([torch.zeros(B, 1, E, device=device), covariates], dim=1)
-            targets = torch.cat([targets, torch.zeros(B, 1, E, device=device)], dim=1)
+        x_1 = self.x_1.expand(B, -1, -1) # (B, 1, E)
         
-        functional_update = torch.zeros_like(covariates)
+        covariates = torch.cat([x_1, x], dim=1) # (B, S+1, E)
+        
+        y_NP1 = torch.zeros(B, 1, E, device=device) # (B, 1, E)    
+        targets = torch.cat([x, y_NP1], dim=1) # (B, S+1, E)
+        functional_update = torch.zeros(B, S+1, E, device=device) # (B, S+1, E)
         
         for block, sym in zip(self.blocks, self.config.block_order):
             if sym.lower() == "t":
@@ -222,10 +225,7 @@ class ICL(LMBase):
             else:
                 covariates, targets, functional_update = block(covariates, targets, functional_update)
         
-        x = functional_update
-        
-        if inference_mode:
-            x = x[:, [-1], :]
+        x = functional_update[:, :-1, :]
             
         x = self.ln_out(x)
         logits = self.lm_head(x)
