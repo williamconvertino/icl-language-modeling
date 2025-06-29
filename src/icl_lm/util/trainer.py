@@ -13,7 +13,7 @@ from .checkpointing import Checkpointing
 class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
-        # self.model = torch.compile(model)
+        self.model = torch.compile(model)
         self.model = model
         self.splits = splits
         self.tokenizer = tokenizer
@@ -36,6 +36,7 @@ class Trainer:
         )
 
         self.optimizer = instantiate(config.optimizer, params=self.model.parameters())
+        
         training_steps = len(self.train_dataloader) * config.epochs
         warmup_steps = int(training_steps * 0.1)
 
@@ -54,23 +55,19 @@ class Trainer:
             device=device
         )
 
-        self.grad_clip = config.clip_grad_norm
-
         self.autocast_dtype = getattr(torch, config.precision)
         self.scaler = GradScaler()
 
     def step_loss(self, batch):
         input_tokens = batch[:, :-1]
         target_tokens = batch[:, 1:]
-        # target_tokens[:, 0] = self.tokenizer.pad_token_id
 
         with autocast(device_type='cuda', dtype=self.autocast_dtype):
             logits = self.model(input_tokens)
             loss = F.cross_entropy(
                 logits.reshape(-1, logits.size(-1)),
                 target_tokens.reshape(-1),
-                ignore_index=self.tokenizer.pad_token_id,
-                reduction='mean'
+                ignore_index=self.tokenizer.pad_token_id
             )
         return loss
 
@@ -91,7 +88,6 @@ class Trainer:
                 loss = self.step_loss(batch)
                 self.scaler.scale(loss).backward()
 
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()

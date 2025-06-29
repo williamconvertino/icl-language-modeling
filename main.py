@@ -38,7 +38,19 @@ def main(config):
         print("Eval mode is not yet implemented.")
     elif config.mode == "generate":
         generator = Generator(config.generation, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
-        generator.checkpointing.load_best()
+        
+        checkpoint_type = config.generation.checkpoint
+
+        if checkpoint_type == "best":
+            generator.checkpointing.load_best()
+        elif checkpoint_type == "recent":
+            generator.checkpointing.load_recent()
+        elif checkpoint_type.startswith("epoch_"):
+            epoch_num = int(checkpoint_type.split("_")[1])
+            generator.checkpointing.load_epoch(epoch_num)
+        elif checkpoint_type is not None and checkpoint_type != "":
+            raise ValueError(f"Unknown checkpoint type: {checkpoint_type}")
+
         generator.generate()
     else:
         raise ValueError(f"Unsupported mode: {config.mode}")

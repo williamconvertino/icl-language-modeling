@@ -60,24 +60,26 @@ class Checkpointing:
             
         filename = f"best_e{epoch}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss)
-        
+
     def load_best(self):
         best_ckpts = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
         if best_ckpts:
             best_ckpt = sorted(best_ckpts)[-1]
             state = torch.load(best_ckpt, map_location=self.device, weights_only=False)
             self.model.load_state_dict(state["model"])
+            if self.optimizer and "optimizer" in state:
+                self.optimizer.load_state_dict(state["optimizer"])
+            if self.scheduler and "scheduler" in state:
+                self.scheduler.load_state_dict(state["scheduler"])
+            if "epoch" in state:
+                self.current_epoch = state["epoch"]
             print(f"Loaded best model from {best_ckpt}")
         else:
             print(f"No best model found")
 
     def load_recent(self):
-        if self.optimizer is None or self.scheduler is None:
-            raise ValueError("Optimizer and scheduler must be defined to load recent checkpoint.")
-        
         epoch_ckpts = glob(os.path.join(self.checkpoint_dir, "epoch_*_val=*.pt"))
         if epoch_ckpts:
-            
             def extract_epoch(path):
                 match = re.search(r"epoch_(\d+)_val=", path)
                 return int(match.group(1)) if match else -1
@@ -85,10 +87,33 @@ class Checkpointing:
             most_recent = max(epoch_ckpts, key=extract_epoch)
             state = torch.load(most_recent, map_location=self.device, weights_only=False)
             self.model.load_state_dict(state["model"])
-            self.optimizer.load_state_dict(state["optimizer"])
-            self.scheduler.load_state_dict(state["scheduler"])
-            self.current_epoch = state["epoch"]
-            print(f"Loaded model, optimizer, and scheduler from {most_recent}")
+            if self.optimizer and "optimizer" in state:
+                self.optimizer.load_state_dict(state["optimizer"])
+            if self.scheduler and "scheduler" in state:
+                self.scheduler.load_state_dict(state["scheduler"])
+            self.current_epoch = state.get("epoch", 0)
+            print(f"Loaded model{', optimizer' if self.optimizer else ''}{', scheduler' if self.scheduler else ''} from {most_recent}")
         else:
             print("No epochs found")
             self.current_epoch = 0
+
+    def load_epoch(self, epoch_number):
+        pattern = os.path.join(self.checkpoint_dir, f"epoch_{epoch_number}_val=*.pt")
+        matching_ckpts = glob(pattern)
+        if not matching_ckpts:
+            print(f"No checkpoint found for epoch {epoch_number}")
+            return
+
+        def extract_val_loss(path):
+            match = re.search(r"val=([0-9.]+)\.pt", path)
+            return float(match.group(1)) if match else float("inf")
+
+        target_ckpt = max(matching_ckpts, key=extract_val_loss)
+        state = torch.load(target_ckpt, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(state["model"])
+        if self.optimizer and "optimizer" in state:
+            self.optimizer.load_state_dict(state["optimizer"])
+        if self.scheduler and "scheduler" in state:
+            self.scheduler.load_state_dict(state["scheduler"])
+        self.current_epoch = state.get("epoch", 0)
+        print(f"Loaded model{', optimizer' if self.optimizer else ''}{', scheduler' if self.scheduler else ''} from {target_ckpt}")
