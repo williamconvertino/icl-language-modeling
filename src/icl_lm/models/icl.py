@@ -216,7 +216,7 @@ class ICL(LMBase):
             else:
                 covariates, targets, functional_update = block(covariates, targets, functional_update)
         
-        x = functional_update[:, :-1, :]
+        x = functional_update[:, 1:, :]
             
         x = self.ln_out(x)
         logits = self.lm_head(x)
