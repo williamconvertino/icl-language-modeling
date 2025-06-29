@@ -23,7 +23,8 @@ class ICLAttention(nn.Module):
         
         self.attn_scale = 1 / math.sqrt(config.hidden_dim)
         
-        self.rotary_embeddings = RotaryPositionalEmbeddings(config.hidden_dim // config.n_heads, max_seq_len=config.max_seq_len + 1)
+        if config.icl_use_rotary_embedding:
+            self.rotary_embeddings = RotaryPositionalEmbeddings(config.hidden_dim // config.n_heads, max_seq_len=config.max_seq_len + 1)
         
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
@@ -41,10 +42,11 @@ class ICLAttention(nn.Module):
         else:
             v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
         
-        q = self.rotary_embeddings(q)
-        k = self.rotary_embeddings(k)
+        if self.config.icl_use_rotary_embedding:
+            q = self.rotary_embeddings(q)
+            k = self.rotary_embeddings(k)
 
-        causal_mask = torch.triu(torch.ones(1, 1, S, S), diagonal=0).bool().to(device)
+        causal_mask = torch.triu(torch.ones(S, S), diagonal=0).bool().to(device)
         causal_mask[0, 0] = False
         
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.attn_scale
@@ -84,7 +86,7 @@ class ICLBlock(nn.Module):
         if config.icl_use_ln_qk:
             self.ln_qk = nn.LayerNorm(config.hidden_dim)
         
-    def _calculate_ex(self, functional_update):
+    def calculate_expectation(self, functional_update):
         
         if self.config.icl_use_ln_mlp:
             ex_term = self.mlp(self.ln_mlp(functional_update))
@@ -97,7 +99,8 @@ class ICLBlock(nn.Module):
         return ex_term
         
     def forward(self, covariates, targets, functional_update):
-        v = targets - self._calculate_ex(functional_update)
+        
+        v = targets + self.calculate_expectation(functional_update)
         
         if self.config.icl_use_ln_v:
             v = self.ln_v(v)
@@ -119,7 +122,7 @@ class ICL(LMBase):
         
         self.embedding = nn.Embedding(config.vocab_size, config.hidden_dim)
         
-        self.x_1 = nn.Parameter(torch.randn(1, 1, config.hidden_dim))
+        self.w_s = nn.Parameter(torch.randn(1, 1, config.hidden_dim))
         
         self.block_order = config.block_order
         
@@ -135,82 +138,22 @@ class ICL(LMBase):
         self.lm_head = nn.Linear(config.hidden_dim, config.vocab_size, bias=False)
         self.lm_head.weight = self.embedding.weight
         
-        if self.config.share_covariate_attn:
-            self.share_covariate_attn()
-        if self.config.share_covariate_mlp:
-            self.share_covariate_mlp()
-        if self.config.share_icl_attn:
-            self.share_icl_attn()
-        if self.config.share_icl_mlp:
-            self.share_icl_mlp()
-        
         self.apply(self.init_weights)
-    
-    def share_covariate_attn(self):
-        W_q = None
-        W_k = None
-        W_v = None
-        for block, sym in zip(self.blocks, self.block_order):
-            if sym.lower() == "t":
-                if W_q is None:
-                    W_q = block.attention.W_q
-                    W_k = block.attention.W_k
-                    W_v = block.attention.W_v
-                else:
-                    block.attention.W_q = W_q
-                    block.attention.W_k = W_k
-                    block.attention.W_v = W_v
-    
-    def share_icl_attn(self):
-        W_q = None
-        W_k = None
-        for block, sym in zip(self.blocks, self.block_order):
-            if sym.lower() != "t":
-                if W_q is None:
-                    W_q = block.attention.W_q
-                    W_k = block.attention.W_k
-                else:
-                    block.attention.W_q = W_q
-                    block.attention.W_k = W_k
-                    
-    def share_covariate_mlp(self):
-        fc_1 = None
-        fc_2 = None
-        for block, sym in zip(self.blocks, self.block_order):
-            if sym.lower() == "t":
-                if fc_1 is None:
-                    fc_1 = block.mlp.fc_1
-                    fc_2 = block.mlp.fc_2
-                else:
-                    block.mlp.fc_1 = fc_1
-                    block.mlp.fc_2 = fc_2
-    
-    def share_icl_mlp(self):
-        fc_1 = None
-        fc_2 = None
-        for block, sym in zip(self.blocks, self.block_order):
-            if sym.lower() != "t":
-                if fc_1 is None:
-                    fc_1 = block.mlp.fc_1
-                    fc_2 = block.mlp.fc_2
-                else:
-                    block.mlp.fc_1 = fc_1
-                    block.mlp.fc_2 = fc_2
     
     def forward(self, input_tokens):
         
-        x = self.embedding(input_tokens) # (B, S, E)
+        w = self.embedding(input_tokens)
         
-        B, S, E = x.shape
-        device = x.device
+        B, S, E = w.shape
+        device = w.device
         
-        x_1 = self.x_1.expand(B, -1, -1) # (B, 1, E)
+        w_s = self.w_s.expand(B, -1, -1)
+        covariates = torch.cat([w_s, w], dim=1)
         
-        covariates = torch.cat([x_1, x], dim=1) # (B, S+1, E)
+        w_NP1 = torch.zeros(B, 1, E, device=device) 
+        targets = torch.cat([w, w_NP1], dim=1)
         
-        y_NP1 = torch.zeros(B, 1, E, device=device) # (B, 1, E)    
-        targets = torch.cat([x, y_NP1], dim=1) # (B, S+1, E)
-        functional_update = torch.zeros(B, S+1, E, device=device) # (B, S+1, E)
+        functional_update = torch.zeros(B, S+1, E, device=device)
         
         for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() == "t":
@@ -219,7 +162,7 @@ class ICL(LMBase):
                 covariates, targets, functional_update = block(covariates, targets, functional_update)
         
         x = functional_update[:, 1:, :]
-            
+        
         x = self.ln_out(x)
         logits = self.lm_head(x)
         

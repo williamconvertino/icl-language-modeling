@@ -10,10 +10,13 @@ icl_use_ln_mlp: false
 icl_use_skip_mlp: false
 icl_use_ln_v: false
 icl_use_ln_qk: false
+icl_use_rotary_embedding: false
 
 share_covariate_attn: false
 share_covariate_mlp: false
 share_icl_attn: false
 share_icl_mlp: false
+
+use_mlp_out: false
 
 block_order: null
