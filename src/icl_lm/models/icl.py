@@ -121,12 +121,14 @@ class ICL(LMBase):
         
         self.x_1 = nn.Parameter(torch.randn(1, 1, config.hidden_dim))
         
-        if config.block_order is None:
-            config.block_order = ["T", "I"] * (config.n_layers // 2)
-            if config.n_layers % 2 != 0:
-                config.block_order = ["T"] + config.block_order
+        self.block_order = config.block_order
         
-        self.blocks = nn.ModuleList([TransformerBlock(config) if sym.lower() == "t" else ICLBlock(config) for sym in config.block_order])
+        if self.block_order is None:
+            self.block_order = ["T", "I"] * (config.n_layers // 2)
+            if config.n_layers % 2 != 0:
+                self.block_order = ["T"] + self.block_order
+        
+        self.blocks = nn.ModuleList([TransformerBlock(config) if sym.lower() == "t" else ICLBlock(config) for sym in self.block_order])
                 
         self.ln_out = nn.LayerNorm(config.hidden_dim)
         
@@ -148,7 +150,7 @@ class ICL(LMBase):
         W_q = None
         W_k = None
         W_v = None
-        for block, sym in zip(self.blocks, self.config.block_order):
+        for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() == "t":
                 if W_q is None:
                     W_q = block.attention.W_q
@@ -162,7 +164,7 @@ class ICL(LMBase):
     def share_icl_attn(self):
         W_q = None
         W_k = None
-        for block, sym in zip(self.blocks, self.config.block_order):
+        for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() != "t":
                 if W_q is None:
                     W_q = block.attention.W_q
@@ -174,7 +176,7 @@ class ICL(LMBase):
     def share_covariate_mlp(self):
         fc_1 = None
         fc_2 = None
-        for block, sym in zip(self.blocks, self.config.block_order):
+        for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() == "t":
                 if fc_1 is None:
                     fc_1 = block.mlp.fc_1
@@ -186,7 +188,7 @@ class ICL(LMBase):
     def share_icl_mlp(self):
         fc_1 = None
         fc_2 = None
-        for block, sym in zip(self.blocks, self.config.block_order):
+        for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() != "t":
                 if fc_1 is None:
                     fc_1 = block.mlp.fc_1
@@ -210,7 +212,7 @@ class ICL(LMBase):
         targets = torch.cat([x, y_NP1], dim=1) # (B, S+1, E)
         functional_update = torch.zeros(B, S+1, E, device=device) # (B, S+1, E)
         
-        for block, sym in zip(self.blocks, self.config.block_order):
+        for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() == "t":
                 covariates = block(covariates)
             else:

@@ -60,9 +60,9 @@ def generate_model_name(model_config, dataset_name):
     parts = [cfg["name"]]
     
     for k, v in cfg.items():
-        if k.startswith("_") or k == "name":
-            continue
-        if isinstance(v, bool):
+        if k.startswith("_") or k == "name" or k is None:
+            continue    
+        elif isinstance(v, bool):
             if v:
                 parts.append(k)
         else:
