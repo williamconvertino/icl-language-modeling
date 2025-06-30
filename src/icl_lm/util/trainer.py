@@ -13,7 +13,7 @@ from .checkpointing import Checkpointing
 class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
-        self.model = torch.compile(model)
+        # self.model = torch.compile(model)
         self.model = model
         self.splits = splits
         self.tokenizer = tokenizer
