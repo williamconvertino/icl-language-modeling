@@ -56,7 +56,6 @@ def main(config):
         raise ValueError(f"Unsupported mode: {config.mode}")
 
 def generate_model_name(config):
-    config = OmegaConf.to_container(config, resolve=True)
     
     parts = [config.model.name]
     
