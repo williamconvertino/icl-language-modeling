@@ -1,6 +1,0 @@
-defaults:
-  - icl
-  - _self_
-
-_target_: icl_lm.models.ICLTest
-name: icl_test

@@ -1,0 +1,2 @@
+_target_: data.tinystories_v2.get_splits
+name: tinystories_v2

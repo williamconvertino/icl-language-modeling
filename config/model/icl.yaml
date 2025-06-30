@@ -6,14 +6,13 @@ _target_: icl_lm.models.ICL
 name: icl
 
 icl_use_wv: false
-icl_use_ln_mlp: false
 icl_use_skip_mlp: false
-icl_use_ln_v: false
-icl_use_ln_qk: false
+icl_use_ln: false
 icl_use_rotary_embedding: false
 
 share_covariate_attn: false
 share_covariate_mlp: false
+
 share_icl_attn: false
 share_icl_mlp: false
 

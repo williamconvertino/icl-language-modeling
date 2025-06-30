@@ -76,19 +76,19 @@ class ICLBlock(nn.Module):
         
         self.mlp = MLP(config)
         
-        if config.icl_use_ln_mlp:
+        if config.icl_use_ln:
             self.ln_mlp = nn.LayerNorm(config.hidden_dim)
         
         self.attention = ICLAttention(config)
         
-        if config.icl_use_ln_v:
+        if config.icl_use_ln:
             self.ln_v = nn.LayerNorm(config.hidden_dim)
-        if config.icl_use_ln_qk:
+        if config.icl_use_ln:
             self.ln_qk = nn.LayerNorm(config.hidden_dim)
         
     def calculate_expectation(self, functional_update):
         
-        if self.config.icl_use_ln_mlp:
+        if self.config.icl_use_ln:
             ex_term = self.mlp(self.ln_mlp(functional_update))
         else:
             ex_term = self.mlp(functional_update)
@@ -102,10 +102,10 @@ class ICLBlock(nn.Module):
         
         v = targets + self.calculate_expectation(functional_update)
         
-        if self.config.icl_use_ln_v:
+        if self.config.icl_use_ln:
             v = self.ln_v(v)
         
-        if self.config.icl_use_ln_qk:
+        if self.config.icl_use_ln:
             q = k = self.ln_qk(covariates)
         else:
             q = k = covariates
@@ -133,12 +133,114 @@ class ICL(LMBase):
         
         self.blocks = nn.ModuleList([TransformerBlock(config) if sym.lower() == "t" else ICLBlock(config) for sym in self.block_order])
                 
+        if self.config.use_mlp_out:
+            self.ln_mlp_out = nn.LayerNorm(config.hidden_dim)
+            self.mlp_out = MLP(config)
+                
         self.ln_out = nn.LayerNorm(config.hidden_dim)
         
         self.lm_head = nn.Linear(config.hidden_dim, config.vocab_size, bias=False)
         self.lm_head.weight = self.embedding.weight
         
+        if self.config.share_covariate_attn:
+            self.share_covariate_attn()
+        if self.config.share_covariate_mlp:
+            self.share_covariate_mlp()
+        if self.config.share_icl_attn:
+            self.share_icl_attn()
+        if self.config.share_icl_mlp:
+            self.share_icl_mlp()
+        
         self.apply(self.init_weights)
+        
+    def share_covariate_attn(self):
+        shared_W_q = shared_W_k = shared_W_v = None
+
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() == "t":
+                attn = block.attention
+
+                if shared_W_q is None:
+                    shared_W_q = attn.W_q
+                    shared_W_k = attn.W_k
+                    shared_W_v = attn.W_v
+                else:
+                    attn._modules.pop('W_q', None)
+                    attn._modules.pop('W_k', None)
+                    attn._modules.pop('W_v', None)
+
+                    attn.W_q = shared_W_q
+                    attn.W_k = shared_W_k
+                    attn.W_v = shared_W_v
+
+                    attn.add_module('W_q', shared_W_q)
+                    attn.add_module('W_k', shared_W_k)
+                    attn.add_module('W_v', shared_W_v)
+
+    def share_icl_attn(self):
+        shared_W_q = shared_W_k = shared_W_v = None
+
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() != "t":
+                attn = block.attention
+
+                if shared_W_q is None:
+                    shared_W_q = attn.W_q
+                    shared_W_k = attn.W_k
+                    if self.config.icl_use_wv:
+                        shared_W_v = attn.W_v
+                else:
+                    attn._modules.pop('W_q', None)
+                    attn._modules.pop('W_k', None)
+                    attn.W_q = shared_W_q
+                    attn.W_k = shared_W_k
+                    attn.add_module('W_q', shared_W_q)
+                    attn.add_module('W_k', shared_W_k)
+
+                    if self.config.icl_use_wv:
+                        attn._modules.pop('W_v', None)
+                        attn.W_v = shared_W_v
+                        attn.add_module('W_v', shared_W_v)
+
+    def share_covariate_mlp(self):
+        shared_fc_1 = shared_fc_2 = None
+
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() == "t":
+                mlp = block.mlp
+
+                if shared_fc_1 is None:
+                    shared_fc_1 = mlp.fc_1
+                    shared_fc_2 = mlp.fc_2
+                else:
+                    mlp._modules.pop('fc_1', None)
+                    mlp._modules.pop('fc_2', None)
+
+                    mlp.fc_1 = shared_fc_1
+                    mlp.fc_2 = shared_fc_2
+
+                    mlp.add_module('fc_1', shared_fc_1)
+                    mlp.add_module('fc_2', shared_fc_2)
+
+    def share_icl_mlp(self):
+        shared_fc_1 = shared_fc_2 = None
+
+        for block, sym in zip(self.blocks, self.config.block_order):
+            if sym.lower() != "t":
+                mlp = block.mlp
+
+                if shared_fc_1 is None:
+                    shared_fc_1 = mlp.fc_1
+                    shared_fc_2 = mlp.fc_2
+                else:
+                    mlp._modules.pop('fc_1', None)
+                    mlp._modules.pop('fc_2', None)
+
+                    mlp.fc_1 = shared_fc_1
+                    mlp.fc_2 = shared_fc_2
+
+                    mlp.add_module('fc_1', shared_fc_1)
+                    mlp.add_module('fc_2', shared_fc_2)
     
     def forward(self, input_tokens):
         
@@ -162,6 +264,9 @@ class ICL(LMBase):
                 covariates, targets, functional_update = block(covariates, targets, functional_update)
         
         x = functional_update[:, 1:, :]
+        
+        if self.config.use_mlp_out:
+            x = x + self.mlp_out(self.ln_mlp_out(x))
         
         x = self.ln_out(x)
         logits = self.lm_head(x)

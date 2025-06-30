@@ -1,42 +1,43 @@
-# Transformer
+# TinyStories
 
-# sbatch --job-name=transformer_8l ./run_job.sh model.n_layers=8
-# sbatch --job-name=transformer_6l ./run_job.sh model.n_layers=6
-# sbatch --job-name=transformer_4l ./run_job.sh model.n_layers=4
+sbatch --job-name=transformer_8l ./run_job.sh model.n_layers=8
+sbatch --job-name=transformer_6l ./run_job.sh model.n_layers=6
+sbatch --job-name=transformer_4l ./run_job.sh model.n_layers=4
 
-# sbatch --job-name=transformer_8l_goodwiki ./run_job.sh model.n_layers=8 dataset=goodwiki
-# sbatch --job-name=transformer_6l_goodwiki ./run_job.sh model.n_layers=6 dataset=goodwiki
-# sbatch --job-name=transformer_4l_goodwiki ./run_job.sh model.n_layers=4 dataset=goodwiki
+sbatch --job-name=icl ./run_job.sh model=icl
+sbatch --job-name=icl_6l ./run_job.sh model=icl model.n_layers=6
+sbatch --job-name=icl_4l ./run_job.sh model=icl model.n_layers=4
 
-# ICL
+# GoodWiki
 
-# sbatch --job-name=icl ./run_job.sh model=icl
-# sbatch --job-name=icl_lr01 ./run_job.sh model=icl model.name=icl_lr01 training.optimizer.lr=0.01
-# sbatch --job-name=icl_lr0001 ./run_job.sh model=icl model.name=icl_lr0001 training.optimizer.lr=0.0001
-# sbatch --job-name=icl_lr0005 ./run_job.sh model=icl model.name=icl_lr0005 training.optimizer.lr=0.0005
-# sbatch --job-name=icl_lr005 ./run_job.sh model=icl model.name=icl_lr005 training.optimizer.lr=0.005
-# sbatch --job-name=icl_lr05 ./run_job.sh model=icl model.name=icl_lr05 training.optimizer.lr=0.05
+sbatch --job-name=transformer_8l_goodwiki ./run_job.sh model.n_layers=8 dataset=goodwiki
+sbatch --job-name=transformer_6l_goodwiki ./run_job.sh model.n_layers=6 dataset=goodwiki
+sbatch --job-name=transformer_4l_goodwiki ./run_job.sh model.n_layers=4 dataset=goodwiki
 
+sbatch --job-name=icl_8l_goodwiki ./run_job.sh model=icl model.n_layers=8 dataset=goodwiki
+sbatch --job-name=icl_6l_goodwiki ./run_job.sh model=icl model.n_layers=6 dataset=goodwiki
+sbatch --job-name=icl_4l_goodwiki ./run_job.sh model=icl model.n_layers=4 dataset=goodwiki
 
-# sbatch --job-name=icl_6l ./run_job.sh model=icl model.n_layers=6
-# sbatch --job-name=icl_4l ./run_job.sh model=icl model.n_layers=4
+# TinyStories V2
 
-# sbatch --job-name=icl_8l_goodwiki ./run_job.sh model=icl model.n_layers=8 dataset=goodwiki
-# sbatch --job-name=icl_6l_goodwiki ./run_job.sh model=icl model.n_layers=6 dataset=goodwiki
-# sbatch --job-name=icl_4l_goodwiki ./run_job.sh model=icl model.n_layers=4 dataset=goodwiki
+sbatch --job-name=transformer_8l_v2 ./run_job.sh model.n_layers=8 dataset=tinystories_v2
+sbatch --job-name=transformer_6l_v2 ./run_job.sh model.n_layers=6 dataset=tinystories_v2
+sbatch --job-name=transformer_4l_v2 ./run_job.sh model.n_layers=4 dataset=tinystories_v2
+
+sbatch --job-name=icl_8l_v2 ./run_job.sh model=icl model.n_layers=8 dataset=tinystories_v2
+sbatch --job-name=icl_6l_v2 ./run_job.sh model=icl model.n_layers=6 dataset=tinystories_v2
+sbatch --job-name=icl_4l_v2 ./run_job.sh model=icl model.n_layers=4 dataset=tinystories_v2
 
 # Other Modifications
 
-# sbatch --job-name=icl_use_wv ./run_job.sh model=icl model.icl_use_wv=true
-# sbatch --job-name=icl_use_ln_all ./run_job.sh model=icl model.icl_use_ln_mlp=true model.icl_use_ln_v=true model.icl_use_ln_qk=true
-# sbatch --job-name=icl_use_ln_all_lr05 ./run_job.sh model=icl model.name=icl_lr05 model.icl_use_ln_mlp=true model.icl_use_ln_v=true model.icl_use_ln_qk=true
-# sbatch --job-name=icl_use_ln_all_lr005 ./run_job.sh model=icl model.name=icl_lr005 model.icl_use_ln_mlp=true model.icl_use_ln_v=true model.icl_use_ln_qk=true
-# sbatch --job-name=icl_use_ln_mlp ./run_job.sh model=icl model.icl_use_ln_mlp=true
-# sbatch --job-name=icl_use_skip_mlp ./run_job.sh model=icl model.icl_use_skip_mlp=true
-# sbatch --job-name=icl_use_ln_v ./run_job.sh model=icl model.icl_use_ln_v=true
-# sbatch --job-name=icl_use_ln_qk ./run_job.sh model=icl model.icl_use_ln_qk=true
+sbatch --job-name=use_mlp_out ./run_job.sh model=icl model.use_mlp_out=true
+sbatch --job-name=icl_use_skip_mlp ./run_job.sh model=icl model.icl_use_skip_mlp=true
+sbatch --job-name=icl_use_wv ./run_job.sh model=icl model.icl_use_wv=true
+sbatch --job-name=icl_use_ln ./run_job.sh model=icl model.icl_use_ln=true
+sbatch --job-name=icl_use_rotary ./run_job.sh model=icl model.icl_use_rotary_embedding=true
 
 # Shared weights
+
 # sbatch --job-name=share_covariate_attn ./run_job.sh model=icl model.n_layers=8 model.share_covariate_attn=true
 # sbatch --job-name=share_covariate_mlp ./run_job.sh model=icl model.n_layers=8 model.share_covariate_mlp=true
 # sbatch --job-name=share_icl_attn ./run_job.sh model=icl model.n_layers=8 model.share_icl_attn=true
