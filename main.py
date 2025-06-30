@@ -70,7 +70,7 @@ def generate_model_name(config):
     
     parts.append(config.dataset.name)
     
-    parts.append(config.training.optimizer.lr)
+    parts.append(f"lr={config.training.optimizer.lr}")
     
     return "-".join(parts)
  
