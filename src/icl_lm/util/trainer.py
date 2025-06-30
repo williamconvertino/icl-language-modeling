@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from hydra.utils import instantiate
 from torch.amp import autocast, GradScaler
 from .checkpointing import Checkpointing
-
+ 
 class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
@@ -49,11 +49,12 @@ class Trainer:
 
         self.checkpointing = Checkpointing(
             model=self.model,
-            optimizer=self.optimizer,
-            scheduler=self.scheduler,
             checkpoint_dir=checkpoint_dir,
-            device=device
+            optimizer=self.optimizer,
+            scheduler=self.scheduler
         )
+
+        self.checkpointing.load_recent()
 
         self.autocast_dtype = getattr(torch, config.precision)
         self.scaler = GradScaler()
@@ -81,11 +82,15 @@ class Trainer:
             total_loss = 0.0
 
             pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}")
-            for batch in pbar:
+            for i, batch in enumerate(pbar):
                 batch = batch.to(self.device)
                 self.optimizer.zero_grad()
 
                 loss = self.step_loss(batch)
+
+                if i % 1000 == 0 and torch.isnan(loss):
+                    raise ValueError(f"NaN loss encountered during training (epoch {epoch}, step {i}).")
+
                 self.scaler.scale(loss).backward()
 
                 self.scaler.step(self.optimizer)

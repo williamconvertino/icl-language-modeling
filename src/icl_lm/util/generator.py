@@ -7,13 +7,11 @@ from .checkpointing import Checkpointing
 class Generator:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, generation_dir, device):
         self.config = config
-        self.model = model.to(device)
+        self.model = model
         self.tokenizer = tokenizer
         self.test_data = splits["test"]
         self.device = device
         self.generation_dir = generation_dir
-
-        self.model.eval()
 
         self.eos_token_id = tokenizer.eos_token_id
         self.pad_token_id = tokenizer.pad_token_id
@@ -27,12 +25,27 @@ class Generator:
         
         self.checkpointing = Checkpointing(
             model=self.model,
-            checkpoint_dir=checkpoint_dir,
-            device=device
+            checkpoint_dir=checkpoint_dir
         )
+
+        checkpoint_type = config.checkpoint
+
+        if checkpoint_type == "best":
+            self.checkpointing.load_best()
+        elif checkpoint_type == "recent":
+            self.checkpointing.load_recent()
+        elif checkpoint_type.startswith("epoch_"):
+            epoch_num = int(checkpoint_type.split("_")[1])
+            self.checkpointing.load_epoch(epoch_num)
+        elif checkpoint_type is not None and checkpoint_type != "":
+            raise ValueError(f"Unknown checkpoint type: {checkpoint_type}")
 
     @torch.no_grad()
     def generate(self):
+
+        self.model.eval()
+        self.model.to(self.device)
+
         with open(self.out_path, "w", encoding="utf-8") as f:
             for i in tqdm(range(self.num_samples), desc="Generating samples"):
                 sample = self.test_data[i]

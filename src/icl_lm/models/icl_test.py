@@ -23,8 +23,8 @@ class ICLAttention(nn.Module):
         
         self.attn_scale = 1 / math.sqrt(config.hidden_dim)
         
-        if config.icl_use_rotary_embedding:
-            self.rotary_embeddings = RotaryPositionalEmbeddings(config.hidden_dim // config.n_heads, max_seq_len=config.max_seq_len + 1)
+        # if config.icl_use_rotary_embedding:
+        #     self.rotary_embeddings = RotaryPositionalEmbeddings(config.hidden_dim // config.n_heads, max_seq_len=config.max_seq_len + 1)
         
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
@@ -42,20 +42,29 @@ class ICLAttention(nn.Module):
         else:
             v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
         
-        if self.config.icl_use_rotary_embedding:
-            q = self.rotary_embeddings(q)
-            k = self.rotary_embeddings(k)
+        # if self.config.icl_use_rotary_embedding:
+        #     q = self.rotary_embeddings(q)
+        #     k = self.rotary_embeddings(k)
 
         causal_mask = torch.triu(torch.ones(S, S), diagonal=0).bool().to(device)
         causal_mask[0, 0] = False
         
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.attn_scale
-        attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
         
-        attn_probs = F.softmax(attn_scores, dim=-1)
-        attn_probs = self.drop_attn(attn_probs)
+        attn_scores = torch.ones(attn_scores.size(1), attn_scores.size(2), device=device).repeat(B, self.config.n_heads, 1, 1) # Identity q/k for ease of testing
+
+        # attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
+        attn_scores = attn_scores.masked_fill(causal_mask, float(0.0))
         
-        attn_output = torch.matmul(attn_probs, v)
+        # attn_probs = F.softmax(attn_scores, dim=-1)
+        # attn_probs = self.drop_attn(attn_probs)
+        print("++++ Attention Scores ++++")
+        print(attn_scores)
+        attn_output = torch.matmul(attn_scores, v)
+        
+        print("++++ Attention Outputs ++++")
+        print(attn_output)
+        
         attn_output = attn_output.transpose(1, 2).contiguous()
         
         if self.config.icl_use_wv:
@@ -63,8 +72,8 @@ class ICLAttention(nn.Module):
         else:
             attn_output = attn_output.view(B, S, self.config.n_heads * self.config.hidden_dim)
             
-        attn_output = self.W_o(attn_output)
-        attn_output = self.drop_resid(attn_output)
+        # attn_output = self.W_o(attn_output)
+        # attn_output = self.drop_resid(attn_output)
         
         return attn_output
 
@@ -87,16 +96,16 @@ class ICLBlock(nn.Module):
             self.ln_qk = nn.LayerNorm(config.hidden_dim)
         
     def calculate_expectation(self, functional_update):
+        return functional_update
+        # if self.config.icl_use_ln_mlp:
+        #     ex_term = self.mlp(self.ln_mlp(functional_update))
+        # else:
+        #     ex_term = self.mlp(functional_update)
         
-        if self.config.icl_use_ln_mlp:
-            ex_term = self.mlp(self.ln_mlp(functional_update))
-        else:
-            ex_term = self.mlp(functional_update)
+        # if self.config.icl_use_skip_mlp:
+        #     ex_term += functional_update
         
-        if self.config.icl_use_skip_mlp:
-            ex_term += functional_update
-        
-        return ex_term
+        # return ex_term
         
     def forward(self, covariates, targets, functional_update):
         
@@ -110,11 +119,26 @@ class ICLBlock(nn.Module):
         else:
             q = k = covariates
             
-        functional_update = functional_update + self.attention(q, k, v)
+        attn_out = self.attention(q, k, v)
+        print("=====Attention Output====")
+        print(attn_out)
+        
+
+        functional_update = functional_update + attn_out
+        
+        print("=====Updated Functional Update====")
+        print(functional_update)
         
         return covariates, targets, functional_update
         
-class ICL(LMBase):
+class EmptyBlock(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+
+    def forward(self, x):
+        return x
+
+class ICLTest(LMBase):
     def __init__(self, config):
         super().__init__()
         
@@ -130,8 +154,8 @@ class ICL(LMBase):
             self.block_order = ["T", "I"] * (config.n_layers // 2)
             if config.n_layers % 2 != 0:
                 self.block_order = ["T"] + self.block_order
-        
-        self.blocks = nn.ModuleList([TransformerBlock(config) if sym.lower() == "t" else ICLBlock(config) for sym in self.block_order])
+        print(self.block_order)
+        self.blocks = nn.ModuleList([EmptyBlock(config) if sym.lower() == "t" else ICLBlock(config) for sym in self.block_order])
                 
         self.ln_out = nn.LayerNorm(config.hidden_dim)
         
@@ -143,6 +167,11 @@ class ICL(LMBase):
     def forward(self, input_tokens):
         
         w = self.embedding(input_tokens)
+        
+        print("=====W====")
+        print(w)
+        print("=====W_s====")
+        print(self.w_s)
 
         B, S, E = w.shape
         device = w.device
@@ -154,6 +183,13 @@ class ICL(LMBase):
         targets = torch.cat([w, w_NP1], dim=1)
         
         functional_update = torch.zeros(B, S+1, E, device=device)
+        
+        print("=====Covariates====")
+        print(covariates)
+        print("=====Targets====")
+        print(targets)
+        print("=====Functional Update====")
+        print(functional_update)
 
         for block, sym in zip(self.blocks, self.block_order):
             if sym.lower() == "t":
@@ -162,6 +198,9 @@ class ICL(LMBase):
                 covariates, targets, functional_update = block(covariates, targets, functional_update)
         
         x = functional_update[:, 1:, :]
+        
+        print("=====Output====")
+        print(x)
         
         x = self.ln_out(x)
         logits = self.lm_head(x)
