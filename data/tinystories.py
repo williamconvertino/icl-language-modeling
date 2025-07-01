@@ -20,7 +20,7 @@ def initialize_dataset(tokenizer, num_workers):
         "test": test_data
     })
 
-    DiskDataset.build_from_dataset(dataset_dict, tokenizer, "datasets/tinystories", num_workers=num_workers)
+    DiskDataset.build_from_dataset(dataset_dict, tokenizer, DATASET_PATH, num_workers=num_workers)
     
 def get_splits(tokenizer, max_seq_len, num_workers=16):
 
@@ -29,7 +29,7 @@ def get_splits(tokenizer, max_seq_len, num_workers=16):
         initialize_dataset(tokenizer, num_workers)
         
     return DiskDataset.get_splits(
-        base_path="datasets/tinystories",
+        base_path=DATASET_PATH,
         tokenizer=tokenizer,
         max_seq_len=max_seq_len
     )

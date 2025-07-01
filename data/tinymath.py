@@ -3,13 +3,13 @@ from datasets import load_dataset, DatasetDict
 from icl_lm.data import Tokenizer
 from icl_lm.data import DiskDataset
 
-DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "datasets", "tinystories_v2")
+DATASET_PATH = os.path.join(os.path.dirname(__file__), "..", "datasets", "tinymath")
 DATASET_PATH = os.path.abspath(DATASET_PATH)
 
 def initialize_dataset(tokenizer, num_workers):
     
-    train_data = load_dataset("roneneldan/TinyStories", data_files="TinyStoriesV2-GPT4-train.txt", split="train")
-    valid_data = load_dataset("roneneldan/TinyStories", data_files="TinyStoriesV2-GPT4-valid.txt", split="train")
+    train_data = load_dataset("williamconvertino/TinyMath", split="train")
+    valid_data = load_dataset("williamconvertino/TinyMath", split="validation")
 
     val_data = valid_data.select(range(10_000))
     test_data = valid_data.select(range(10_000, len(valid_data)))
