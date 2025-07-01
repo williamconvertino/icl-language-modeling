@@ -7,7 +7,7 @@ name: icl
 
 icl_use_wv: false
 icl_use_skip_mlp: false
-icl_use_ln: false
+icl_use_ln: true
 icl_use_rotary_embedding: false
 
 share_covariate_attn: false
