@@ -24,8 +24,8 @@ def main(config):
     )
     splits["name"] = config.dataset.name
 
-    checkpoint_dir = os.path.join("outputs", "checkpoints")
-    generation_dir = os.path.join("outputs", "generations")
+    checkpoint_dir = os.path.join("outputs", "checkpoints", config.dataset.name)
+    generation_dir = os.path.join("outputs", "generations", config.dataset.name)
 
     device = torch.device(config.device)
 
