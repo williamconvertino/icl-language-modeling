@@ -21,11 +21,11 @@ conda activate icl
 cd ..
 
 # Define the list of learning rates
-lrs=(1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2)
+lrs=(0.00001 0.00003 0.0001 0.0003 0.001 0.003 0.01 0.03 0.1 0.3)
 
 # Get the current learning rate based on SLURM_ARRAY_TASK_ID
 lr=${lrs[$SLURM_ARRAY_TASK_ID]}
 echo "Running with learning rate: $lr"
 
 # Run the training script with the selected learning rate
-python main.py training.optimizer.lr=$lr "$@"
+python main.py training.optimizer.lr=$lr "$@" training.epochs=3
