@@ -10,7 +10,7 @@ class Checkpointing:
         self.scheduler = scheduler
         self.device = device
         
-        self.checkpoint_dir = os.path.join(checkpoint_dir, model.name)
+        self.checkpoint_dir = checkpoint_dir
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         self.best_val_loss = self._get_initial_best_val_loss()

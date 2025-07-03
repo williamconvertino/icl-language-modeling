@@ -11,6 +11,7 @@ from icl_lm.util.generator import Generator
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
 def main(config):
+    
     tokenizer = Tokenizer()
     config.model["vocab_size"] = tokenizer.vocab_size
 
@@ -24,8 +25,8 @@ def main(config):
     )
     splits["name"] = config.dataset.name
 
-    checkpoint_dir = os.path.join("outputs", "checkpoints", config.dataset.name)
-    generation_dir = os.path.join("outputs", "generations", config.dataset.name)
+    checkpoint_dir = os.path.join("outputs", "checkpoints", config.dataset.name, model.name, str(config.training.optimizer.lr))
+    generation_dir = os.path.join("outputs", "generations", config.dataset.name, model.name, str(config.training.optimizer.lr))
 
     device = torch.device(config.device)
 
@@ -69,8 +70,6 @@ def generate_model_name(config):
             parts.append(f"{k}={v}")
     
     parts.append(config.dataset.name)
-    
-    parts.append(f"lr={config.training.optimizer.lr}")
     
     return "-".join(parts)
  
