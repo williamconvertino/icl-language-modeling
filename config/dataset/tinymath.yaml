@@ -1,2 +1,2 @@
-_target_: data.tinystories.get_splits
+_target_: data.tinymath.get_splits
 name: tinymath
