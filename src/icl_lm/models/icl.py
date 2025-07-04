@@ -76,14 +76,11 @@ class ICLBlock(nn.Module):
         
         self.mlp = MLP(config)
         
-        if config.icl_use_ln:
-            self.ln_mlp = nn.LayerNorm(config.hidden_dim)
-        
         self.attention = ICLAttention(config)
         
         if config.icl_use_ln:
+            self.ln_mlp = nn.LayerNorm(config.hidden_dim)
             self.ln_v = nn.LayerNorm(config.hidden_dim)
-        if config.icl_use_ln:
             self.ln_qk = nn.LayerNorm(config.hidden_dim)
         
     def calculate_expectation(self, functional_update):
@@ -100,7 +97,10 @@ class ICLBlock(nn.Module):
         
     def forward(self, covariates, targets, functional_update):
         
-        v = targets + self.calculate_expectation(functional_update)
+        if self.config.skip_expectation or self.config.icl_mlp_out:
+            v = targets + self.calculate_expectation(functional_update)
+        else:
+            v = targets
         
         if self.config.icl_use_ln:
             v = self.ln_v(v)
@@ -111,6 +111,9 @@ class ICLBlock(nn.Module):
             q = k = covariates
             
         functional_update = functional_update + self.attention(q, k, v)
+        
+        if self.config.icl_mlp_out:
+            functional_update = functional_update + self.calculate_expectation(functional_update)
         
         return covariates, targets, functional_update
         

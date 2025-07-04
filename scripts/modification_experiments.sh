@@ -5,6 +5,8 @@ sbatch --job-name=icl_use_skip_mlp ./lr_search.sh model=icl model.icl_use_skip_m
 sbatch --job-name=icl_use_wv ./lr_search.sh model=icl model.icl_use_wv=true
 sbatch --job-name=icl_use_ln ./lr_search.sh model=icl model.icl_use_ln=true
 sbatch --job-name=icl_use_rotary ./lr_search.sh model=icl model.icl_use_rotary_embedding=true
+sbatch --job-name=icl_mlp_out ./lr_search.sh model=icl model.icl_mlp_out=true
+sbatch --job-name=skip_expectation ./lr_search.sh model=icl model.skip_expectation=true
 
 # Shared weights
 

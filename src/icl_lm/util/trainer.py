@@ -19,6 +19,8 @@ class Trainer:
         self.tokenizer = tokenizer
         self.device = device
         
+        self.model.to(self.device)
+        
         self.train_dataloader = DataLoader(
             splits["train"],
             batch_size=config.batch_size,
@@ -51,7 +53,8 @@ class Trainer:
             model=self.model,
             checkpoint_dir=checkpoint_dir,
             optimizer=self.optimizer,
-            scheduler=self.scheduler
+            scheduler=self.scheduler,
+            device=self.device
         )
 
         self.checkpointing.load_recent()
@@ -75,7 +78,9 @@ class Trainer:
     def train(self):
         tqdm.write(f"Training model {self.model.name} on device {self.device}")
 
-        self.model.to(self.device)
+        prev_val_loss = float('inf')
+        patience = 2
+        patience_counter = 0
 
         for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
             self.model.train()
@@ -107,6 +112,16 @@ class Trainer:
             self.checkpointing.save_best(epoch, val_loss)
 
             tqdm.write(f"[Epoch {epoch}] Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}")
+            
+            if val_loss >= prev_val_loss:
+                patience_counter += 1
+            else:
+                patience_counter = 0
+                prev_val_loss = val_loss
+            
+            if patience_counter >= patience:
+                tqdm.write("Early stopping triggered.")
+                return
 
     def validate(self):
         self.model.eval()

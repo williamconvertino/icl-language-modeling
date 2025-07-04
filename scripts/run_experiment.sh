@@ -21,7 +21,8 @@ conda activate icl
 cd ..
 
 lrs=(0.0001 0.0003 0.001 0.003)
+
 lr=${lrs[$SLURM_ARRAY_TASK_ID]}
 echo "Running with learning rate: $lr"
 
-python main.py training.optimizer.lr=$lr "$@" training.epochs=3
+python main.py training.optimizer.lr=$lr "$@" training.epochs=15

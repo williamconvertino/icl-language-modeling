@@ -9,12 +9,15 @@ icl_use_wv: false
 icl_use_skip_mlp: false
 icl_use_ln: true
 icl_use_rotary_embedding: false
+icl_mlp_out: false
 
 share_covariate_attn: false
 share_covariate_mlp: false
 
 share_icl_attn: false
 share_icl_mlp: false
+
+skip_expectation: false
 
 use_mlp_out: false
 
