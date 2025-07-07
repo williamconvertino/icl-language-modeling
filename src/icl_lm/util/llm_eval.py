@@ -82,10 +82,10 @@ class Evaluator:
         self.llm_eval_dir = llm_eval_dir
         os.makedirs(self.llm_eval_dir, exist_ok=True)
 
-        self.input_path = os.path.join(self.out_dir, "input.jsonl")
-        self.output_path = os.path.join(self.out_dir, "output.jsonl")
-        self.info_path = os.path.join(self.out_dir, "info.json")
-        self.results_path = os.path.join(self.out_dir, "results.json")
+        self.input_path = os.path.join(self.llm_eval_dir, "input.jsonl")
+        self.output_path = os.path.join(self.llm_eval_dir, "output.jsonl")
+        self.info_path = os.path.join(self.llm_eval_dir, "info.json")
+        self.results_path = os.path.join(self.llm_eval_dir, "results.json")
 
         load_dotenv()
         self.api_key = os.getenv("OPENAI_API_KEY")
