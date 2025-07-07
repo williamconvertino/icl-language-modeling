@@ -4,7 +4,6 @@ import statistics
 from tqdm import tqdm
 from dotenv import load_dotenv
 from openai import OpenAI
-from .checkpointing import Checkpointing
 from .generator import Generator
 
 SYSTEM_PROMPT = "You are a writing evaluator designed to assess student story completions. You will be provided children's stories written for a 3-4 year old audience. Your role is to provide constructive, fair, and detailed evaluations based on specific rubric criteria."
@@ -22,7 +21,7 @@ Here is the students response:
 
 <STUDENT RESPONSE>
 [STORY_END]
-</STUDENT RESPONSE>
+</STUDENT_RESPONSE>
 
 First, provide a concise qualitative assessment about the student's writing. Then, give the writing a grade out of 10. These assessments should be done for each of the following rubric items:
 
@@ -94,27 +93,23 @@ class Evaluator:
             raise EnvironmentError("OPENAI_API_KEY is not set in the environment.")
         self.client = OpenAI(api_key=self.api_key)
 
-        self.eos_token_id = tokenizer.eos_token_id
-        self.max_seq_len = config.max_length
-        self.model.eval()
-        self.checkpointing = Checkpointing(model, checkpoint_dir)
-        self.checkpointing.load_best()
-        self.model.to(device)
+        self.generator = Generator(config, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
 
     def generate_input_file(self):
         input_items = []
         num_samples = self.config.num_samples
+        max_len = self.config.max_length
 
         for i in tqdm(range(num_samples), desc="Preparing LLM evaluation prompts"):
             sample = self.test_data[i]
-            input_ids = sample[:self.max_seq_len]
+            input_ids = sample[:max_len]
             input_len = max(10, len(input_ids) // 2)
+            prompt_ids = input_ids[:input_len].to(self.device)
 
-            prompt_ids = input_ids[:input_len]
-            gen_ids = generate_text_nucleus(self.model, self.tokenizer, prompt_ids, device=self.device)
+            gen_ids = self.generator.sample(prompt_ids)
 
-            if len(gen_ids) < 10:
-                continue
+            if len(gen_ids) <= input_len:
+                continue  # Skip if generation is too short
 
             prompt_text = self.tokenizer.decode(prompt_ids.tolist(), skip_special_tokens=True)
             generation_text = self.tokenizer.decode(gen_ids.tolist()[input_len:], skip_special_tokens=True)
