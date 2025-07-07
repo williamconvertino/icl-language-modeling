@@ -70,7 +70,7 @@ Provide your assessment below:
 """
 
 class Evaluator:
-    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, generation_dir, device):
+    def __init__(self, config, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device):
         self.config = config
         self.model = model
         self.tokenizer = tokenizer
@@ -79,8 +79,8 @@ class Evaluator:
         self.dataset_name = splits["name"]
 
         self.model_name = model.name
-        self.out_dir = os.path.join(generation_dir, self.dataset_name, self.model_name)
-        os.makedirs(self.out_dir, exist_ok=True)
+        self.llm_eval_dir = llm_eval_dir
+        os.makedirs(self.llm_eval_dir, exist_ok=True)
 
         self.input_path = os.path.join(self.out_dir, "input.jsonl")
         self.output_path = os.path.join(self.out_dir, "output.jsonl")
@@ -93,7 +93,7 @@ class Evaluator:
             raise EnvironmentError("OPENAI_API_KEY is not set in the environment.")
         self.client = OpenAI(api_key=self.api_key)
 
-        self.generator = Generator(config, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
+        self.generator = Generator(config, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device)
 
     def generate_input_file(self):
         self.model.eval()
