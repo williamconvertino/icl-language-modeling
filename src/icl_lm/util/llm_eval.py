@@ -96,41 +96,53 @@ class Evaluator:
         self.generator = Generator(config, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
 
     def generate_input_file(self):
-        
         self.model.eval()
         self.model.to(self.device)
-        
+
         input_items = []
         num_samples = self.config.num_samples
         max_len = self.config.max_length
+        is_baseline = self.config.use_baseline
 
         for i in tqdm(range(num_samples), desc="Preparing LLM evaluation prompts"):
             sample = self.test_data[i]
             input_tokens = sample[:max_len]
-            
+
+            # Truncate at EOS if present
             if self.tokenizer.eos_token_id in input_tokens:
-                    eos_index = (input_tokens == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
-                    input_tokens = input_tokens[:eos_index]
-            
+                eos_index = (input_tokens == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
+                input_tokens = input_tokens[:eos_index]
+
             input_len = max(10, len(input_tokens) // 2)
             prompt_ids = input_tokens[:input_len].to(self.device)
 
-            generated = self.generator.sample(prompt_ids)
-            
-            if self.tokenizer.eos_token_id in generated:
+            if is_baseline:
+                # Use second half of the original sample as the response
+                generation_ids = input_tokens[input_len:]
+                if len(generation_ids) == 0:
+                    continue
+            else:
+                # Use model to generate completion
+                generated = self.generator.sample(prompt_ids)
+                if self.tokenizer.eos_token_id in generated:
                     eos_index = (generated == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
                     generated = generated[:eos_index]
 
-            if len(generated) <= input_len:
-                continue  # Skip if generation is too short
+                if len(generated) <= input_len:
+                    continue  # Skip if generation is too short
 
+                generation_ids = generated[input_len:]
+
+            # Decode both parts
             prompt_text = self.tokenizer.decode(prompt_ids.tolist())
-            generation_text = self.tokenizer.decode(generated.tolist()[input_len:])
+            generation_text = self.tokenizer.decode(generation_ids.tolist())
 
             full_prompt = USER_PROMPT.replace("[STORY_BEGIN]", prompt_text).replace("[STORY_END]", generation_text)
 
+            id = f"baseline_{i}" if is_baseline else f"{self.model_name}_{i}"
+
             input_items.append({
-                "custom_id": f"{self.model_name}_{i}",
+                "custom_id": id,
                 "method": "POST",
                 "url": "/v1/chat/completions",
                 "body": {

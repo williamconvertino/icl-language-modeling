@@ -3,3 +3,4 @@ temperature: 1.0
 top_p: 0.9
 max_length: 50
 num_samples: 10
+use_baseline: true
