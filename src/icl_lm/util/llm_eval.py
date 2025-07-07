@@ -102,9 +102,14 @@ class Evaluator:
 
         for i in tqdm(range(num_samples), desc="Preparing LLM evaluation prompts"):
             sample = self.test_data[i]
-            input_ids = sample[:max_len]
-            input_len = max(10, len(input_ids) // 2)
-            prompt_ids = input_ids[:input_len].to(self.device)
+            input_tokens = sample[:max_len]
+            
+            if self.tokenizer.eos_token_id in input_tokens:
+                    eos_index = (input_tokens == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
+                    input_tokens = input_tokens[:eos_index]
+            
+            input_len = max(10, len(input_tokens) // 2)
+            prompt_ids = input_tokens[:input_len].to(self.device)
 
             generated = self.generator.sample(prompt_ids)
             

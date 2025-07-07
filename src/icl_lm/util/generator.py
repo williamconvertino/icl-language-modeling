@@ -51,6 +51,10 @@ class Generator:
                 sample = self.test_data[i]
                 input_tokens = torch.tensor(sample[:self.max_len], dtype=torch.long, device=self.device)
 
+                if self.tokenizer.eos_token_id in input_tokens:
+                    eos_index = (input_tokens == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
+                    input_tokens = input_tokens[:eos_index]
+                
                 decoded_full = self.tokenizer.decode(sample.tolist())
 
                 prompt_len = max(1, len(input_tokens) // 2)
@@ -59,11 +63,7 @@ class Generator:
                 generated = self.sample(prompt)
 
                 if self.tokenizer.eos_token_id in generated:
-                    print("----------")
-                    print(self.tokenizer.eos_token_id)
-                    print(generated)
                     eos_index = (generated == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
-                    print(eos_index)
                     generated = generated[:eos_index]
 
                 decoded_prompt = self.tokenizer.decode(prompt.tolist())
