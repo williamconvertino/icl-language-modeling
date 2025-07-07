@@ -58,6 +58,10 @@ class Generator:
 
                 generated = self.sample(prompt)
 
+                if self.tokenizer.eos_token_id in gen_ids:
+                    eos_index = (gen_ids == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
+                    gen_ids = gen_ids[:eos_index]
+
                 decoded_prompt = self.tokenizer.decode(prompt.tolist())
                 decoded_gen = self.tokenizer.decode(generated.tolist()[prompt_len:])
 

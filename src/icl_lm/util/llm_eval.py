@@ -107,6 +107,10 @@ class Evaluator:
             prompt_ids = input_ids[:input_len].to(self.device)
 
             gen_ids = self.generator.sample(prompt_ids)
+            
+            if self.tokenizer.eos_token_id in gen_ids:
+                    eos_index = (gen_ids == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
+                    gen_ids = gen_ids[:eos_index]
 
             if len(gen_ids) <= input_len:
                 continue  # Skip if generation is too short
