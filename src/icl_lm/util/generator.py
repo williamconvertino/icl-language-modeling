@@ -55,7 +55,7 @@ class Generator:
                     eos_index = (input_tokens == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
                     input_tokens = input_tokens[:eos_index]
                 
-                decoded_full = self.tokenizer.decode(sample.tolist())
+                decoded_full = self.tokenizer.decode(input_tokens.tolist())
 
                 prompt_len = max(1, len(input_tokens) // 2)
                 prompt = input_tokens[:prompt_len]
