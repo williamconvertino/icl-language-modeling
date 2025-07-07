@@ -124,8 +124,8 @@ class Evaluator:
             if len(generated) <= input_len:
                 continue  # Skip if generation is too short
 
-            prompt_text = self.tokenizer.decode(prompt_ids.tolist(), skip_special_tokens=True)
-            generation_text = self.tokenizer.decode(generated.tolist()[input_len:], skip_special_tokens=True)
+            prompt_text = self.tokenizer.decode(prompt_ids.tolist())
+            generation_text = self.tokenizer.decode(generated.tolist()[input_len:])
 
             full_prompt = USER_PROMPT.replace("[STORY_BEGIN]", prompt_text).replace("[STORY_END]", generation_text)
 
