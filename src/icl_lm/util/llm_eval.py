@@ -96,6 +96,10 @@ class Evaluator:
         self.generator = Generator(config, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
 
     def generate_input_file(self):
+        
+        self.model.eval()
+        self.model.to(self.device)
+        
         input_items = []
         num_samples = self.config.num_samples
         max_len = self.config.max_length
