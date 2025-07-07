@@ -106,17 +106,17 @@ class Evaluator:
             input_len = max(10, len(input_ids) // 2)
             prompt_ids = input_ids[:input_len].to(self.device)
 
-            gen_ids = self.generator.sample(prompt_ids)
+            generated = self.generator.sample(prompt_ids)
             
-            if self.tokenizer.eos_token_id in gen_ids:
-                    eos_index = (gen_ids == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
-                    gen_ids = gen_ids[:eos_index]
+            if self.tokenizer.eos_token_id in generated:
+                    eos_index = (generated == self.tokenizer.eos_token_id).nonzero(as_tuple=True)[0][0].item()
+                    generated = generated[:eos_index]
 
-            if len(gen_ids) <= input_len:
+            if len(generated) <= input_len:
                 continue  # Skip if generation is too short
 
             prompt_text = self.tokenizer.decode(prompt_ids.tolist(), skip_special_tokens=True)
-            generation_text = self.tokenizer.decode(gen_ids.tolist()[input_len:], skip_special_tokens=True)
+            generation_text = self.tokenizer.decode(generated.tolist()[input_len:], skip_special_tokens=True)
 
             full_prompt = USER_PROMPT.replace("[STORY_BEGIN]", prompt_text).replace("[STORY_END]", generation_text)
 
