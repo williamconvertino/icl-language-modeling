@@ -1,96 +1,241 @@
 import os
-import torch
+import json
+import statistics
 from tqdm import tqdm
-import torch.nn.functional as F
-from .checkpointing import Checkpointing
+from dotenv import load_dotenv
+from openai import OpenAI
+from .generator import Generator
 
-class Generator:
+SYSTEM_PROMPT = "You are a writing evaluator designed to assess student story completions. You will be provided children's stories written for a 3-4 year old audience. Your role is to provide constructive, fair, and detailed evaluations based on specific rubric criteria."
+
+USER_PROMPT = """
+In the following exercise, the student is given a pre-written beginning of a story. The student needs to complete this story. The exercise tests the student´s language abilities and creativity.
+
+Here is the pre-written beginning:
+
+<PROVIDED BEGINNING>
+[STORY_BEGIN]
+</PROVIDED BEGINNING>
+
+Here is the students response:
+
+<STUDENT RESPONSE>
+[STORY_END]
+</STUDENT_RESPONSE>
+
+First, provide a concise qualitative assessment about the student's writing. Then, give the writing a grade out of 10. These assessments should be done for each of the following rubric items:
+
+1. Grammar:
+* Is the writing grammatically correct?
+* Evaluate syntax, punctuation, and sentence structure.
+2. Consistency:
+* Is the student's writing consistent with the provided beginning of the story?
+* How well does the student complete the final sentence of the prescribed beginning?
+3. Plot:
+* Does the plot of the student's writing make sense (regardless of the provided beginning)?
+4. Creativity: 
+* How creative is the student's writing?
+
+Format your response as follows:
+
+<GRAMMAR>
+[Qualitative assessment of grammar]
+</GRAMMAR>
+<GRAMMAR_GRADE>
+[Grade out of 10]
+</GRAMMAR_GRADE>
+
+<CONSISTENCY>
+[Qualitative assessment of consistency]
+</CONSISTENCY>
+<CONSISTENCY_GRADE>
+[Grade out of 10]
+</CONSISTENCY_GRADE>
+
+<PLOT>
+[Qualitative assessment of plot]
+</PLOT>
+<PLOT_GRADE>
+[Grade out of 10]
+</PLOT_GRADE>
+
+<CREATIVITY>
+[Qualitative assessment of creativity]
+</CREATIVITY>
+<CREATIVITY_GRADE>
+[Grade out of 10]
+</CREATIVITY_GRADE>
+
+Provide your assessment below:
+"""
+
+class Evaluator:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, generation_dir, device):
         self.config = config
         self.model = model
         self.tokenizer = tokenizer
         self.test_data = splits["test"]
         self.device = device
-        self.generation_dir = generation_dir
+        self.dataset_name = splits["name"]
 
-        self.eos_token_id = tokenizer.eos_token_id
-        self.pad_token_id = tokenizer.pad_token_id
-        self.max_len = config.max_length
-        self.num_samples = config.num_samples
-        self.temperature = config.temperature
-        self.top_p = config.top_p
+        self.model_name = model.name
+        self.out_dir = os.path.join(generation_dir, self.dataset_name, self.model_name)
+        os.makedirs(self.out_dir, exist_ok=True)
 
-        os.makedirs(os.path.join(generation_dir, splits["name"]), exist_ok=True)
-        self.out_path = os.path.join(generation_dir, splits["name"], f"{model.name}.log")
-        
-        self.checkpointing = Checkpointing(
-            model=self.model,
-            checkpoint_dir=checkpoint_dir
+        self.input_path = os.path.join(self.out_dir, "input.jsonl")
+        self.output_path = os.path.join(self.out_dir, "output.jsonl")
+        self.info_path = os.path.join(self.out_dir, "info.json")
+        self.results_path = os.path.join(self.out_dir, "results.json")
+
+        load_dotenv()
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise EnvironmentError("OPENAI_API_KEY is not set in the environment.")
+        self.client = OpenAI(api_key=self.api_key)
+
+        self.generator = Generator(config, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
+
+    def generate_input_file(self):
+        input_items = []
+        num_samples = self.config.num_samples
+        max_len = self.config.max_length
+
+        for i in tqdm(range(num_samples), desc="Preparing LLM evaluation prompts"):
+            sample = self.test_data[i]
+            input_ids = sample[:max_len]
+            input_len = max(10, len(input_ids) // 2)
+            prompt_ids = input_ids[:input_len].to(self.device)
+
+            gen_ids = self.generator.sample(prompt_ids)
+
+            if len(gen_ids) <= input_len:
+                continue  # Skip if generation is too short
+
+            prompt_text = self.tokenizer.decode(prompt_ids.tolist(), skip_special_tokens=True)
+            generation_text = self.tokenizer.decode(gen_ids.tolist()[input_len:], skip_special_tokens=True)
+
+            full_prompt = USER_PROMPT.replace("[STORY_BEGIN]", prompt_text).replace("[STORY_END]", generation_text)
+
+            input_items.append({
+                "custom_id": f"{self.model_name}_{i}",
+                "method": "POST",
+                "url": "/v1/chat/completions",
+                "body": {
+                    "model": "gpt-4o",
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": full_prompt}
+                    ],
+                    "max_tokens": 1000
+                }
+            })
+
+        with open(self.input_path, "w") as f:
+            for item in input_items:
+                f.write(json.dumps(item) + "\n")
+
+    def create_batch(self):
+        if os.path.exists(self.info_path):
+            return
+
+        if not os.path.exists(self.input_path):
+            self.generate_input_file()
+
+        file = self.client.files.create(file=open(self.input_path, "rb"), purpose="batch")
+        batch = self.client.batches.create(
+            input_file_id=file.id,
+            endpoint="/v1/chat/completions",
+            completion_window="24h",
+            metadata={"description": f"{self.model_name} LLM eval"}
         )
 
-        checkpoint_type = config.checkpoint
+        with open(self.info_path, "w") as f:
+            json.dump({"batch_id": batch.id}, f)
 
-        if checkpoint_type == "best":
-            self.checkpointing.load_best()
-        elif checkpoint_type == "recent":
-            self.checkpointing.load_recent()
-        elif checkpoint_type.startswith("epoch_"):
-            epoch_num = int(checkpoint_type.split("_")[1])
-            self.checkpointing.load_epoch(epoch_num)
-        elif checkpoint_type is not None and checkpoint_type != "":
-            raise ValueError(f"Unknown checkpoint type: {checkpoint_type}")
+    def save_output(self):
+        if os.path.exists(self.output_path):
+            return True
 
-    @torch.no_grad()
-    def generate(self):
+        with open(self.info_path, "r") as f:
+            batch_id = json.load(f)["batch_id"]
 
-        self.model.eval()
-        self.model.to(self.device)
+        batch = self.client.batches.retrieve(batch_id)
 
-        with open(self.out_path, "w", encoding="utf-8") as f:
-            for i in tqdm(range(self.num_samples), desc="Generating samples"):
-                sample = self.test_data[i]
-                input_tokens = torch.tensor(sample[:self.max_len], dtype=torch.long, device=self.device)
+        if batch.status == "completed":
+            content = self.client.files.content(batch.output_file_id).text
+            with open(self.output_path, "w") as f:
+                f.write(content)
+            return True
+        elif batch.status == "failed":
+            raise RuntimeError(f"Batch {batch_id} failed.")
+        else:
+            print(f"Batch {batch_id} is still processing: {batch.status}")
+            return False
 
-                decoded_full = self.tokenizer.decode(sample.tolist())
+    def parse_output(self):
+        if os.path.exists(self.results_path):
+            with open(self.results_path, "r") as f:
+                return json.load(f)
 
-                prompt_len = max(1, len(input_tokens) // 2)
-                prompt = input_tokens[:prompt_len]
+        with open(self.output_path, "r") as f:
+            lines = f.readlines()
 
-                generated = self.sample(prompt)
+        def extract_score(tag, text):
+            try:
+                value = text.split(f"<{tag}>")[1].split(f"</{tag}>")[0].strip()
+                return int(value.split("/")[0].strip())
+            except:
+                return None
 
-                decoded_prompt = self.tokenizer.decode(prompt.tolist())
-                decoded_gen = self.tokenizer.decode(generated.tolist()[prompt_len:])
+        scores = {"grammar": [], "consistency": [], "plot": [], "creativity": []}
+        errors = 0
 
-                f.write("============\n")
-                f.write("ORIGINAL SAMPLE:\n")
-                f.write("============\n")
-                f.write(decoded_full + "\n")
-                f.write("============\n")
-                f.write("GENERATION:\n")
-                f.write("============\n")
-                f.write(f"{decoded_prompt} [{decoded_gen}]\n")
-                f.write("============\n")
-                f.write("++++++++++++\n")
+        for line in lines:
+            response = json.loads(line)
+            content = response["response"]["body"]["choices"][0]["message"]["content"]
 
-    def sample(self, input_ids):
-        input_ids = input_ids.unsqueeze(0)
-        while input_ids.shape[1] < self.max_len:
-            logits = self.model(input_ids)[:, -1, :] / self.temperature
-            probs = F.softmax(logits, dim=-1)
+            g = extract_score("GRAMMAR_GRADE", content)
+            c = extract_score("CONSISTENCY_GRADE", content)
+            p = extract_score("PLOT_GRADE", content)
+            cr = extract_score("CREATIVITY_GRADE", content)
 
-            sorted_probs, sorted_indices = torch.sort(probs, descending=True)
-            cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
-            cutoff = cumulative_probs > self.top_p
+            if None in (g, c, p, cr):
+                errors += 1
+                continue
 
-            if cutoff.any():
-                cutoff_index = torch.nonzero(cutoff, as_tuple=False)[0, 1] + 1
-                probs[0, sorted_indices[0, cutoff_index:]] = 0
-                probs /= probs.sum()
+            scores["grammar"].append(g)
+            scores["consistency"].append(c)
+            scores["plot"].append(p)
+            scores["creativity"].append(cr)
 
-            next_token = torch.multinomial(probs, num_samples=1)
-            input_ids = torch.cat([input_ids, next_token], dim=1)
+        results = {}
+        for key in scores:
+            s = scores[key]
+            results[key] = {
+                "mean": round(sum(s) / len(s), 2),
+                "stdev": round(statistics.stdev(s), 2) if len(s) > 1 else 0.0
+            }
 
-            if next_token.item() == self.eos_token_id:
-                break
+        total_scores = [sum(x) / 4 for x in zip(*scores.values())]
+        results["total"] = {
+            "mean": round(sum(total_scores) / len(total_scores), 2),
+            "stdev": round(statistics.stdev(total_scores), 2) if len(total_scores) > 1 else 0.0
+        }
 
-        return input_ids.squeeze(0)
+        with open(self.results_path, "w") as f:
+            json.dump(results, f, indent=2)
+
+        latex = (
+            f"{results['total']['mean']} ({results['total']['stdev']}) & "
+            f"{results['grammar']['mean']} ({results['grammar']['stdev']}) & "
+            f"{results['consistency']['mean']} ({results['consistency']['stdev']}) & "
+            f"{results['plot']['mean']} ({results['plot']['stdev']}) & "
+            f"{results['creativity']['mean']} ({results['creativity']['stdev']})"
+        )
+        print("Latex format:")
+        print(latex)
+
+    def evaluate(self):
+        self.create_batch()
+        if self.save_output():
+            self.parse_output()

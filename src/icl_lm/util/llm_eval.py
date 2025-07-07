@@ -5,7 +5,7 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 from openai import OpenAI
 from .checkpointing import Checkpointing
-from .generator import generate_text_nucleus
+from .generator import Generator
 
 SYSTEM_PROMPT = "You are a writing evaluator designed to assess student story completions. You will be provided children's stories written for a 3-4 year old audience. Your role is to provide constructive, fair, and detailed evaluations based on specific rubric criteria."
 
