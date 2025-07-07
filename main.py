@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 from icl_lm.data.tokenizer import Tokenizer
 from icl_lm.util.trainer import Trainer
 from icl_lm.util.generator import Generator
+from icl_lm.util.llm_eval import Evaluator
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
 def main(config):
@@ -36,7 +37,8 @@ def main(config):
             trainer.checkpointing.load_recent()
         trainer.train()
     elif config.mode == "eval":
-        print("Eval mode is not yet implemented.")
+        evaluator = Evaluator(config.generation, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
+        evaluator.evaluate()
     elif config.mode == "generate":
         generator = Generator(config.generation, model, splits, tokenizer, checkpoint_dir, generation_dir, device)
         
