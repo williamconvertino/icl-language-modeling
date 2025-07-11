@@ -22,9 +22,7 @@ class Attention(nn.Module):
         
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
-        
-        # self.register_buffer("cached_training_mask", torch.triu(torch.ones(1, 1, config.max_seq_len - 1, config.max_seq_len - 1), diagonal=1).bool(), persistent=False)
-
+    
     def forward(self, x):
         
         q = k = v = x
@@ -37,10 +35,7 @@ class Attention(nn.Module):
         
         q = self.rotary_embeddings(q)
         k = self.rotary_embeddings(k)
-        
-        # if S == self.config.max_seq_len - 1:
-        #     causal_mask = self.cached_training_mask
-        # else:
+
         causal_mask = torch.triu(torch.ones(S, S), diagonal=1).bool().to(q.device)
         
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.attn_scale

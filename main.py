@@ -66,12 +66,9 @@ def generate_model_name(config):
     for k, v in config.model.items():
         if k.startswith("_") or k == "name" or k is None:
             continue
-        elif isinstance(v, bool):
-            if v:
-                parts.append(k)
-        else:
-            parts.append(f"{k}={v}")
-    
+        elif isinstance(v, bool) and v:
+            parts.append(k)
+        
     parts.append(config.dataset.name)
     
     return "-".join(parts)

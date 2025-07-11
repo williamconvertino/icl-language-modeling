@@ -1,0 +1,2 @@
+_target_: data.slimpajama_6b.get_splits
+name: slimpajama_6b

@@ -1,6 +1,4 @@
-sbatch --job-name=transformer_8l ./run_experiment.sh model.n_layers=8
-sbatch --job-name=transformer_6l ./run_experiment.sh model.n_layers=6
-sbatch --job-name=transformer_4l ./run_experiment.sh model.n_layers=4
-# sbatch --job-name=icl ./run_experiment.sh model=icl
-# sbatch --job-name=icl ./run_experiment.sh model=icl model.use_mlp_out=true
-# sbatch --job-name=icl ./run_experiment.sh model=icl model.icl_mlp_out=true
+sbatch --job-name=transformer_medium ./train_medium.sh model=transformer_medium
+sbatch --job-name=icl_medium ./train_medium.sh model=icl_medium
+sbatch --job-name=icl_medium_mlp ./train_medium.sh model=icl_medium model.icl_use_mlp=true
+sbatch --job-name=icl_medium_output_mlp ./train_medium.sh model=icl_medium model.use_output_mlp=true

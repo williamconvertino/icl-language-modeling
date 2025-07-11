@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=icl-language
+#SBATCH --job-name=icl-run_experiment
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
@@ -10,7 +10,7 @@
 #SBATCH --exclude=dcc-youlab-gpu-28,dcc-gehmlab-gpu-56
 #SBATCH --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-yaolab-gpu-[01-08],dcc-wengerlab-gpu-01,dcc-engelhardlab-gpu-[02-04],dcc-motesa-gpu-[01-04],dcc-pbenfeylab-gpu-[01-04],dcc-vossenlab-gpu-[01-04],dcc-youlab-gpu-[01-56],dcc-mastatlab-gpu-01,dcc-viplab-gpu-01,dcc-youlab-gpu-57
 #SBATCH --requeue
-#SBATCH --array=0-6
+#SBATCH --array=0-4
 #SBATCH --output=logs/%x-%A_%a.out
 #SBATCH --error=logs/%x-%A_%a.err
 

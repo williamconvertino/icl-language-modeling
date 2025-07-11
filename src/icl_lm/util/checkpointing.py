@@ -61,6 +61,38 @@ class Checkpointing:
             
         filename = f"best_e{epoch}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss)
+        
+    def save_step(self, total_step, epoch, step_in_epoch, val_loss):
+        assert self.optimizer is not None and self.scheduler is not None, "Optimizer and scheduler must be defined to save step checkpoint."
+        filename = f"step_{total_step}_epoch_{epoch}_step_{step_in_epoch}_val={val_loss:.4f}.pt"
+        self._save(filename, epoch=epoch, val_loss=val_loss)
+
+    def load_step(self, total_step=None):
+        pattern = os.path.join(self.checkpoint_dir, "step_*_epoch_*_step_*_val=*.pt")
+        step_ckpts = glob(pattern)
+
+        if not step_ckpts:
+            print("No step-level checkpoints found")
+            return
+
+        def extract_total_step(path):
+            match = re.search(r"step_(\d+)_epoch_", path)
+            return int(match.group(1)) if match else -1
+
+        if total_step is None:
+            # Load most recent step checkpoint
+            target_ckpt = max(step_ckpts, key=extract_total_step)
+        else:
+            # Load specific step
+            target_ckpts = [ckpt for ckpt in step_ckpts if f"step_{total_step}_" in ckpt]
+            if not target_ckpts:
+                print(f"No checkpoint found for step {total_step}")
+                return
+            target_ckpt = max(target_ckpts, key=os.path.getmtime)
+
+        state = torch.load(target_ckpt, map_location=self.device, weights_only=False)
+        self.load_checkpoint_state(state)
+        print(f"Loaded step checkpoint from {target_ckpt}")
 
     def load_checkpoint_state(self, state):
         self.model.load_state_dict(state["model"])
@@ -95,6 +127,21 @@ class Checkpointing:
         else:
             print("No epochs found")
             self.current_epoch = 0
+            
+    def load_recent_step(self):
+        step_ckpts = glob(os.path.join(self.checkpoint_dir, "step_*_epoch_*_step_*_val=*.pt"))
+        if not step_ckpts:
+            print("No recent step checkpoint found")
+            return
+
+        def extract_total_step(path):
+            match = re.search(r"step_(\d+)_epoch_", path)
+            return int(match.group(1)) if match else -1
+
+        most_recent = max(step_ckpts, key=extract_total_step)
+        state = torch.load(most_recent, map_location=self.device, weights_only=False)
+        self.load_checkpoint_state(state)
+        print(f"Loaded most recent step checkpoint from {most_recent}")
 
     def load_epoch(self, epoch_number):
         pattern = os.path.join(self.checkpoint_dir, f"epoch_{epoch_number}_val=*.pt")

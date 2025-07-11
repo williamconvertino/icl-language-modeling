@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=icl-language
+#SBATCH --job-name=icl-run-job
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16

@@ -1,7 +1,1 @@
-n_layers: 8
-n_heads: 8
-
-hidden_dim: 512
-max_seq_len: 512
-
 vocab_size: 50267 # Gets overridden by the tokenizer

@@ -1,0 +1,10 @@
+defaults:
+  - transformer_small
+  - _self_
+
+_target_: icl_lm.models.ICL
+name: icl_medium
+
+icl_use_mlp: false
+icl_use_wv: false
+use_output_mlp: false
