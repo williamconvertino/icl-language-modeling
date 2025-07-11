@@ -18,6 +18,12 @@ def main(config):
 
     model = get_class(config.model._target_)(config.model)
     model.name = generate_model_name(config)
+    
+    total_params = sum(p.numel() for p in model.parameters())
+    embed_params = sum(p.numel() for name, p in model.named_parameters() if name.lower() == "embedding")
+    non_embed_params = total_params - embed_params
+    
+    print(f"Loaded model {model.name} with {total_params} parameters ({embed_params} embed, {non_embed_params} non-embed)")
 
     splits = get_method(config.dataset._target_)(
         tokenizer=tokenizer,
