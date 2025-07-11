@@ -17,6 +17,9 @@ class ICLAttention(nn.Module):
         if config.icl_use_wv:
             self.W_v = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
             self.W_o = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
+        elif config.icl_share_wv:
+            self.W_v = nn.Linear(config.hidden_dim, config.hidden_dim // config.n_heads, bias=False)
+            self.W_o = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
         else:
             self.W_o = nn.Linear(config.n_heads * config.hidden_dim, config.hidden_dim, bias=False)
         
@@ -35,6 +38,8 @@ class ICLAttention(nn.Module):
         
         if self.config.icl_use_wv:
             v = self.W_v(v).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
+        elif self.config.icl_share_wv:
+            v = self.W_v(v).unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
         else:
             v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
     
@@ -50,7 +55,7 @@ class ICLAttention(nn.Module):
         attn_output = torch.matmul(attn_probs, v)
         attn_output = attn_output.transpose(1, 2).contiguous()
         
-        if self.config.icl_use_wv:
+        if self.config.icl_use_wv or self.config.icl_share_wv:
             attn_output = attn_output.view(B, S, self.config.hidden_dim)
         else:
             attn_output = attn_output.view(B, S, self.config.n_heads * self.config.hidden_dim)

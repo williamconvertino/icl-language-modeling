@@ -7,4 +7,5 @@ name: icl_small
 
 icl_use_mlp: false
 icl_use_wv: false
+icl_share_wv: false
 use_output_mlp: false
