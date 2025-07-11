@@ -1,10 +1,6 @@
 defaults:
-  - transformer_medium
+  - icl_medium
   - _self_
 
-_target_: icl_lm.models.ICL
-name: icl_medium
-
-icl_use_mlp: false
-icl_use_wv: false
-use_output_mlp: false
+_target_: icl_lm.models.ICLFast
+name: icl_medium_fast
