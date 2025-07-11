@@ -39,7 +39,7 @@ class ICLAttention(nn.Module):
         if self.config.icl_use_wv:
             v = self.W_v(v).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         elif self.config.icl_share_wv:
-            v = self.W_v(v).unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
+            v = self.W_v(v).unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         else:
             v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
     
