@@ -23,7 +23,7 @@ class Attention(nn.Module):
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
         
-        causal_mask = torch.triu(torch.ones(config.max_seq_len - 1, config.max_seq_len - 1), diagonal=1).bool()
+        causal_mask = torch.triu(torch.ones(config.max_seq_len, config.max_seq_len), diagonal=1).bool()
         
         self.register_buffer("causal_mask", causal_mask)
     
