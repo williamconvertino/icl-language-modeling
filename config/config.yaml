@@ -1,5 +1,5 @@
 defaults:
-  - model: transformer
+  - model: transformer_small
   - training: base
   - generation: base
   - dataset: tinystories
