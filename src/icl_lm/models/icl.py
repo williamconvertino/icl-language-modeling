@@ -66,8 +66,9 @@ class ICLBlock(nn.Module):
         
         self.config = config
         
-        self.mlp = MLP(config)
-        self.ln_mlp = nn.LayerNorm(config.hidden_dim)
+        if self.config.icl_use_mlp:
+            self.mlp = MLP(config)
+            self.ln_mlp = nn.LayerNorm(config.hidden_dim)
         
         self.attention = ICLAttention(config)
         self.ln_v = nn.LayerNorm(config.hidden_dim)

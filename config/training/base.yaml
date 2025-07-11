@@ -10,5 +10,6 @@ batch_size: 32
 num_workers: 16
 
 precision: float16
+compile: false
 
 resume: true

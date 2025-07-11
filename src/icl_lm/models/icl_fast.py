@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .lm_base import LMBase
-from .transformer import MLP, TransformerBlock
+from .transformer_fast import MLP, TransformerBlock
 
 class ICLAttention(nn.Module):
     def __init__(self, config):
@@ -25,6 +25,11 @@ class ICLAttention(nn.Module):
         self.drop_attn = nn.Dropout(0.1)
         self.drop_resid = nn.Dropout(0.1)
         
+        causal_mask = torch.triu(torch.ones(config.max_seq_len, config.max_seq_len), diagonal=0).bool()
+        causal_mask[0, 0] = False
+        
+        self.register_buffer("causal_mask", causal_mask)
+        
     def forward(self, q, k, v):
         
         B, S, E = q.shape
@@ -32,17 +37,10 @@ class ICLAttention(nn.Module):
         
         q = self.W_q(q).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         k = self.W_k(k).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
-        
-        if self.config.icl_use_wv:
-            v = self.W_v(v).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
-        else:
-            v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
-    
-        causal_mask = torch.triu(torch.ones(S, S), diagonal=0).bool().to(device)
-        causal_mask[0, 0] = False
+        v = self.W_v(v).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.attn_scale
-        attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
+        attn_scores = attn_scores.masked_fill(self.causal_mask, float('-inf'))
         
         attn_probs = F.softmax(attn_scores, dim=-1)
         attn_probs = self.drop_attn(attn_probs)
@@ -50,10 +48,7 @@ class ICLAttention(nn.Module):
         attn_output = torch.matmul(attn_probs, v)
         attn_output = attn_output.transpose(1, 2).contiguous()
         
-        if self.config.icl_use_wv:
-            attn_output = attn_output.view(B, S, self.config.hidden_dim)
-        else:
-            attn_output = attn_output.view(B, S, self.config.n_heads * self.config.hidden_dim)
+        attn_output = attn_output.view(B, S, self.config.hidden_dim)
             
         attn_output = self.W_o(attn_output)
         attn_output = self.drop_resid(attn_output)
@@ -66,9 +61,8 @@ class ICLBlock(nn.Module):
         
         self.config = config
         
-        if self.config.icl_use_mlp:
-            self.mlp = MLP(config)
-            self.ln_mlp = nn.LayerNorm(config.hidden_dim)
+        self.mlp = MLP(config)
+        self.ln_mlp = nn.LayerNorm(config.hidden_dim)
         
         self.attention = ICLAttention(config)
         self.ln_v = nn.LayerNorm(config.hidden_dim)
@@ -81,8 +75,7 @@ class ICLBlock(nn.Module):
             
         functional_update = functional_update + self.attention(q, k, v)
         
-        if self.config.icl_use_mlp:
-            functional_update = functional_update + self.mlp(functional_update)
+        functional_update = functional_update + self.mlp(functional_update)
         
         return covariates, targets, functional_update
         
@@ -98,10 +91,6 @@ class ICLFast(LMBase):
         
         self.transformer_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers // 2)])
         self.icl_blocks = nn.ModuleList([ICLBlock(config) for _ in range(config.n_layers // 2)])
-        
-        if self.config.use_output_mlp:
-            self.ln_mlp_out = nn.LayerNorm(config.hidden_dim)
-            self.mlp_out = MLP(config)
                 
         self.ln_out = nn.LayerNorm(config.hidden_dim)
         
@@ -130,9 +119,6 @@ class ICLFast(LMBase):
             covariates, targets, functional_update = icl_block(covariates, targets, functional_update)
         
         x = functional_update[:, 1:, :]
-        
-        if self.config.use_output_mlp:
-            x = x + self.mlp_out(self.ln_mlp_out(x))
         
         x = self.ln_out(x)
         logits = self.lm_head(x)

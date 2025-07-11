@@ -10,7 +10,6 @@ from .checkpointing import Checkpointing
 class Trainer:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, device):
         self.config = config
-        # self.model = torch.compile(model)
         self.model = model
         self.splits = splits
         self.tokenizer = tokenizer
@@ -61,6 +60,9 @@ class Trainer:
 
         self.autocast_dtype = getattr(torch, config.precision)
         self.scaler = GradScaler()
+        
+        if config.compile:
+            self.model = torch.compile(model)
 
     def step_loss(self, batch):
         input_tokens = batch[:, :-1]
