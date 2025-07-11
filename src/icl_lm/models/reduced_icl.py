@@ -89,7 +89,7 @@ class ICLBlock(nn.Module):
         
         return covariates, targets, functional_update
         
-class ICL(LMBase):
+class ReducedICL(LMBase):
     def __init__(self, config):
         super().__init__()
         
@@ -99,8 +99,8 @@ class ICL(LMBase):
         
         self.w_s = nn.Parameter(torch.randn(1, 1, config.hidden_dim))
         
-        self.transformer_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers // 2)])
-        self.icl_blocks = nn.ModuleList([ICLBlock(config) for _ in range(config.n_layers // 2)])
+        self.transformer_blocks = nn.ModuleList([TransformerBlock(config) for _ in config.n_layers // 2])
+        self.icl_blocks = nn.ModuleList([ICLBlock(config) for _ in config.n_layers // 2])
         
         if self.config.use_output_mlp:
             self.ln_mlp_out = nn.LayerNorm(config.hidden_dim)
