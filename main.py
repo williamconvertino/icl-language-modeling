@@ -20,7 +20,7 @@ def main(config):
     model.name = generate_model_name(config)
     
     total_params = sum(p.numel() for p in model.parameters()) // 1000000
-    embed_params = sum(p.numel() for name, p in model.named_parameters() if name.lower() == "embedding") // 1000000
+    embed_params = sum(p.numel() for name, p in model.named_parameters() if "embed" in name.lower()) // 1000000
     non_embed_params = total_params - embed_params
     
     print(f"Loaded model {model.name} with {total_params}M parameters ({embed_params}M embed, {non_embed_params}M non-embed)")
