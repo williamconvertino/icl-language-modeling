@@ -106,8 +106,10 @@ class Trainer:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.scheduler.step()
-
-                total_loss += loss.item()
+                
+                train_loss = loss.item()
+                
+                total_loss += train_loss
                 
                 if self.config.num_save_steps is not None and i % self.config.num_save_steps == 0:
                     
@@ -122,7 +124,7 @@ class Trainer:
                     )
                 
                 pbar.set_postfix({
-                    "train_loss": f"{avg_train_loss:.4f}",
+                    "train_loss": f"{train_loss:.4f}",
                     "val_loss": f"{val_loss:.4f}",
                     "ppl": f"{ppl:.2f}"
                 })
