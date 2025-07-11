@@ -96,11 +96,8 @@ class ICLAttention(nn.Module):
         self.W_q = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
         self.W_k = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
         
-        if config.icl_use_wv:
-            self.W_v = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
-            self.W_o = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
-        else:
-            self.W_o = nn.Linear(config.n_heads * config.hidden_dim, config.hidden_dim, bias=False)
+        self.W_v = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
+        self.W_o = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
         
         self.attn_scale = 1 / math.sqrt(config.hidden_dim)
         
