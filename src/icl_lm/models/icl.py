@@ -37,11 +37,7 @@ class ICLAttention(nn.Module):
             v = self.W_v(v).view(B, S, self.config.n_heads, self.config.hidden_dim // self.config.n_heads).transpose(1, 2)
         else:
             v = v.unsqueeze(2).expand(B, S, self.config.n_heads, self.config.hidden_dim).transpose(1, 2)
-        
-        if self.config.icl_use_rotary_embedding:
-            q = self.rotary_embeddings(q)
-            k = self.rotary_embeddings(k)
-
+    
         causal_mask = torch.triu(torch.ones(S, S), diagonal=0).bool().to(device)
         causal_mask[0, 0] = False
         
