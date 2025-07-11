@@ -6,6 +6,7 @@ ICL (No W_v): 378M, 23H
 ICL (No W_v) MLP: 386M, 24H
 
 ICL: 201M, 18.5H
+ICL Shared W_v: 190M, 18H
 ICL MLP: 210M, 19H
 ICL MLP between layers: 302M, 20H
 
