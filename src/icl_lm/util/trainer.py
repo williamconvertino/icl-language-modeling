@@ -113,7 +113,7 @@ class Trainer:
                 
                 total_loss += train_loss
                 
-                if self.config.num_save_steps is not None and i % self.config.num_save_steps == 0:
+                if self.config.num_save_steps is not None and i % self.config.num_save_steps == 0 and i != 0:
                     
                     val_loss = self.validate()
                     ppl = math.exp(val_loss)
