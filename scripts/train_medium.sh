@@ -19,4 +19,4 @@ source ~/.bashrc
 conda activate icl
 
 cd ..
-python main.py "$@" training.optimizer.lr=0.0002 dataset=slimpajama_6b
+python main.py "$@" training.optimizer.lr=0.0002 dataset=slimpajama_6b training.compile=true
