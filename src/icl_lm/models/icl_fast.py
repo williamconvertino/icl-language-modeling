@@ -140,8 +140,12 @@ class ICLBlock(nn.Module):
         
         self.config = config
         
-        self.mlp = MLP(config)
-        self.ln_mlp = nn.LayerNorm(config.hidden_dim)
+        if self.config.icl_use_mlp:
+            self.mlp = MLP(config)
+            self.ln_mlp = nn.LayerNorm(config.hidden_dim)
+        else:
+            self.mlp = nn.Identity(config.hidden_dim)
+            self.ln_mlp = nn.Identity(config.hidden_dim)
         
         self.attention = ICLAttention(config)
         self.ln_v = nn.LayerNorm(config.hidden_dim)
@@ -171,6 +175,13 @@ class ICLFast(LMBase):
         self.transformer_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers // 2)])
         self.icl_blocks = nn.ModuleList([ICLBlock(config) for _ in range(config.n_layers // 2)])
                 
+        if self.config.use_output_mlp:
+            self.ln_mlp_out = nn.LayerNorm(config.hidden_dim)
+            self.mlp_out = MLP(config)
+        else:
+            self.ln_mlp_out = nn.Identity(config.hidden_dim)
+            self.mlp_out = nn.Identity(config.hidden_dim)
+                
         self.ln_out = nn.LayerNorm(config.hidden_dim)
         
         self.lm_head = nn.Linear(config.hidden_dim, config.vocab_size, bias=False)
@@ -198,6 +209,8 @@ class ICLFast(LMBase):
             covariates, targets, functional_update = icl_block(covariates, targets, functional_update)
         
         x = functional_update[:, 1:, :]
+        
+        x = x + self.mlp_out(self.ln_mlp_out(x))
         
         x = self.ln_out(x)
         logits = self.lm_head(x)
