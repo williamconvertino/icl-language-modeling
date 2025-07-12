@@ -75,8 +75,6 @@ def generate_model_name(config):
         elif isinstance(v, bool) and v:
             parts.append(k)
         
-    parts.append(config.dataset.name)
-    
     return "-".join(parts)
  
 if __name__ == "__main__":

@@ -26,11 +26,7 @@ class DiskDataset(Dataset):
 
     @staticmethod
     def build_from_dataset(dataset_dict, tokenizer, output_dir, add_bos=False, add_eos=True, column="text", num_workers=None):
-
         os.makedirs(output_dir, exist_ok=True)
-
-        if num_workers is None:
-            num_workers = 1
 
         def tokenize_fn(text):
             ids = tokenizer.encode(text)
@@ -45,34 +41,36 @@ class DiskDataset(Dataset):
                 continue
 
             print(f"Building split: {split}")
+            dataset = dataset_dict[split]
 
-            data = dataset_dict[split]
-            data = data.map(
-                lambda batch: {"input_ids": [tokenize_fn(x) for x in batch[column]]},
-                batched=True,
-                remove_columns=[column],
-                num_proc=num_workers
-            )
+            print("Estimating total token count...")
+            token_count = 0
+            for example in tqdm(dataset, desc="Estimating"):
+                token_count += len(tokenize_fn(example[column]))
+
             file_path = os.path.join(output_dir, f"{split if split != 'validation' else 'val'}.bin")
-
-            total_len = sum(len(seq) for seq in data["input_ids"])
-            memmap_array = np.memmap(file_path, dtype="int32", mode="w+", shape=(total_len,))
+            memmap_array = np.memmap(file_path, dtype="int32", mode="w+", shape=(token_count,))
             write_pointer = 0
-
             buffer = []
             buffer_size = 8192
 
-            for seq in tqdm(data["input_ids"], desc=f"Writing {split}"):
-                buffer.extend(seq)
+            def generator():
+                for example in dataset:
+                    yield tokenize_fn(example[column])
+
+            print("Tokenizing and writing...")
+            for token_ids in tqdm(generator(), total=len(dataset), desc=f"Writing {split}"):
+                buffer.extend(token_ids)
                 if len(buffer) >= buffer_size:
-                    memmap_array[write_pointer:write_pointer+len(buffer)] = buffer
+                    memmap_array[write_pointer:write_pointer + len(buffer)] = buffer
                     write_pointer += len(buffer)
                     buffer = []
 
             if buffer:
-                memmap_array[write_pointer:write_pointer+len(buffer)] = buffer
+                memmap_array[write_pointer:write_pointer + len(buffer)] = buffer
 
             memmap_array.flush()
+            del memmap_array
 
     @staticmethod
     def get_splits(base_path, tokenizer, max_seq_len):

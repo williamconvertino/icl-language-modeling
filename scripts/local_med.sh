@@ -1,4 +1,0 @@
-sbatch --job-name=transformer_medium_fast --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-wengerlab-gpu-01 ./train_medium.sh model=transformer_medium_fast training.batch_size=16
-# sbatch --job-name=icl_medium_fast --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-wengerlab-gpu-01 ./train_medium.sh model=icl_medium_fast training.batch_size=16 
-# sbatch --job-name=icl_medium_fast_mlp --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-wengerlab-gpu-01 ./train_medium.sh model=icl_medium_fast training.batch_size=16 model.use_output_mlp=true
-# sbatch --job-name=icl_medium_fast_mlp_all --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-wengerlab-gpu-01 ./train_medium.sh model=icl_medium_fast training.batch_size=16 model.icl_use_mlp=true
