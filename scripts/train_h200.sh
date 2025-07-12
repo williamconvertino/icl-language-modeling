@@ -1,4 +1,3 @@
-
 #!/bin/bash
 #SBATCH --job-name=h200_train
 #SBATCH --mem=32G
