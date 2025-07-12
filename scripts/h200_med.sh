@@ -1,0 +1,4 @@
+sbatch --job-name=transformer_medium_fast --nodelist=dcc-h200-gpu-[02-03,05-07] ./train_medium.sh model=transformer_medium_fast training.batch_size=128
+sbatch --job-name=icl_medium_fast --nodelist=dcc-h200-gpu-[02-03,05-07] ./train_medium.sh model=icl_medium_fast training.batch_size=128
+sbatch --job-name=icl_medium_fast_mlp --nodelist=dcc-h200-gpu-[02-03,05-07] ./train_medium.sh model=icl_medium_fast training.batch_size=128 model.use_output_mlp=true
+sbatch --job-name=icl_medium_fast_mlp_all --nodelist=dcc-h200-gpu-[02-03,05-07] ./train_medium.sh model=icl_medium_fast training.batch_size=128 model.icl_use_mlp=true

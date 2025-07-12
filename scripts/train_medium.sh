@@ -7,6 +7,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=120:00:00
 #SBATCH --partition=scavenger-gpu
+#LOCAL: SBATCH --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-wengerlab-gpu-01
+#H200: SBATCH --nodelist=dcc-h200-gpu-[02-03,05-07]
 #SBATCH --nodelist=dcc-allenlab-gpu-[01-04],dcc-allenlab-gpu-[05-12],dcc-majoroslab-gpu-[01-08],dcc-wengerlab-gpu-01
 #SBATCH --requeue
 #SBATCH --output=logs/%x-%j.out
