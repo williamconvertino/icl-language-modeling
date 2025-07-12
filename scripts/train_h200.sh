@@ -16,4 +16,4 @@ source ~/.bashrc
 conda activate icl
 
 cd ..
-python main.py "$@" dataset=slimpajama_6b training.compile=true training.num_save_steps=50000 training.num_workers=8 training.epochs=10
+python main.py "$@" dataset=slimpajama_6b training.compile=true training.num_save_steps=20000 training.num_workers=8 training.epochs=10
