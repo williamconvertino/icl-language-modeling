@@ -1,0 +1,6 @@
+defaults:
+  - icl_small
+  - _self_
+
+_target_: icl_lm.models.DEICL
+name: de_icl_small

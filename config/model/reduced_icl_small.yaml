@@ -1,10 +1,17 @@
 defaults:
-  - transformer_small
+  - icl_small
   - _self_
 
-_target_: icl_lm.models.ReducedICLSmall
-name: icl_small
+_target_: icl_lm.models.ReducedICL
+name: reduced_icl_small
 
-icl_use_mlp: false
-icl_use_wv: false
-use_output_mlp: false
+hidden_dim_phi: 512
+hidden_dim_f: 512
+
+embed_dim_phi: 512
+embed_dim_f: 512
+
+# Actual hidden dim = mlp_dim_phi * 4,
+# kept like this for consistency with above values
+mlp_dim_phi: 512
+mlp_dim_f: 512
