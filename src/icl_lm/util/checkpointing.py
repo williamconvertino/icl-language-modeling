@@ -42,13 +42,12 @@ class Checkpointing:
             checkpoint["step_in_epoch"] = step_in_epoch
         torch.save(checkpoint, path)
 
-
     def save_checkpoint(self, name, val_loss):
         filename = f"{name}_val={val_loss:.4f}.pt"
         self._save(filename, val_loss=val_loss)
 
     def save_epoch(self, epoch, val_loss):
-        assert self.optimizer is not None and self.scheduler is not None, "Optimizer and scheduler must be defined to save epoch checkpoint."
+        assert self.optimizer is not None and self.scheduler is not None
         filename = f"epoch_{epoch}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss)
         self.current_epoch = epoch
@@ -56,44 +55,40 @@ class Checkpointing:
     def save_best(self, epoch, val_loss):
         if val_loss >= self.best_val_loss:
             return
-        
         self.best_val_loss = val_loss
-
         old_best = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
         for f in old_best:
             os.remove(f)
-            
         filename = f"best_e{epoch}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss)
-        
-    def save_step(self, total_step, epoch, step_in_epoch, val_loss):
+
+    def save_step(self, epoch, step_in_epoch, val_loss):
         assert self.optimizer is not None and self.scheduler is not None
-        filename = f"step_{total_step}_epoch_{epoch}_step_{step_in_epoch}_val={val_loss:.4f}.pt"
+        filename = f"epoch_{epoch}_step_{step_in_epoch}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss, step_in_epoch=step_in_epoch)
 
-
-    def load_step(self, total_step=None):
-        pattern = os.path.join(self.checkpoint_dir, "step_*_epoch_*_step_*_val=*.pt")
+    def load_step(self, epoch=None, step_in_epoch=None):
+        pattern = os.path.join(self.checkpoint_dir, "epoch_*_step_*_val=*.pt")
         step_ckpts = glob(pattern)
 
         if not step_ckpts:
             print("No step-level checkpoints found")
             return
 
-        def extract_total_step(path):
-            match = re.search(r"step_(\d+)_epoch_", path)
-            return int(match.group(1)) if match else -1
+        def extract_tuple(path):
+            match = re.search(r"epoch_(\d+)_step_(\d+)_val=", path)
+            if match:
+                return int(match.group(1)), int(match.group(2))
+            return -1, -1
 
-        if total_step is None:
-            # Load most recent step checkpoint
-            target_ckpt = max(step_ckpts, key=extract_total_step)
-        else:
-            # Load specific step
-            target_ckpts = [ckpt for ckpt in step_ckpts if f"step_{total_step}_" in ckpt]
-            if not target_ckpts:
-                print(f"No checkpoint found for step {total_step}")
+        if epoch is not None and step_in_epoch is not None:
+            matches = [p for p in step_ckpts if f"epoch_{epoch}_step_{step_in_epoch}_" in p]
+            if not matches:
+                print(f"No checkpoint found for epoch {epoch}, step {step_in_epoch}")
                 return
-            target_ckpt = max(target_ckpts, key=os.path.getmtime)
+            target_ckpt = max(matches, key=os.path.getmtime)
+        else:
+            target_ckpt = max(step_ckpts, key=lambda p: extract_tuple(p))
 
         state = torch.load(target_ckpt, map_location=self.device, weights_only=False)
         self.load_checkpoint_state(state)
@@ -105,10 +100,9 @@ class Checkpointing:
             self.optimizer.load_state_dict(state["optimizer"])
         if self.scheduler and "scheduler" in state:
             self.scheduler.load_state_dict(state["scheduler"])
-
         self.current_epoch = state.get("epoch", 0)
         self.current_step = state.get("step_in_epoch", 0)
-        
+
     def load_best(self):
         best_ckpts = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
         if best_ckpts:
@@ -117,7 +111,7 @@ class Checkpointing:
             self.load_checkpoint_state(state)
             print(f"Loaded best model from {best_ckpt}")
         else:
-            print(f"No best model found")
+            print("No best model found")
 
     def load_recent(self):
         epoch_ckpts = glob(os.path.join(self.checkpoint_dir, "epoch_*_val=*.pt"))
@@ -133,18 +127,18 @@ class Checkpointing:
         else:
             print("No epochs found")
             self.current_epoch = 0
-            
+
     def load_recent_step(self):
-        step_ckpts = glob(os.path.join(self.checkpoint_dir, "step_*_epoch_*_step_*_val=*.pt"))
+        step_ckpts = glob(os.path.join(self.checkpoint_dir, "epoch_*_step_*_val=*.pt"))
         if not step_ckpts:
             print("No recent step checkpoint found")
             return
 
-        def extract_total_step(path):
-            match = re.search(r"step_(\d+)_epoch_", path)
-            return int(match.group(1)) if match else -1
+        def extract_tuple(path):
+            match = re.search(r"epoch_(\d+)_step_(\d+)_val=", path)
+            return (int(match.group(1)), int(match.group(2))) if match else (-1, -1)
 
-        most_recent = max(step_ckpts, key=extract_total_step)
+        most_recent = max(step_ckpts, key=lambda p: extract_tuple(p))
         state = torch.load(most_recent, map_location=self.device, weights_only=False)
         self.load_checkpoint_state(state)
         print(f"Loaded most recent step checkpoint from {most_recent}")

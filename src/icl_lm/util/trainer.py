@@ -127,7 +127,6 @@ class Trainer:
                     ppl = math.exp(val_loss)
                     
                     self.checkpointing.save_step(
-                        total_step=(len(self.train_dataloader) * (epoch - 1)) + i,
                         epoch=epoch,
                         step_in_epoch=i,
                         val_loss=val_loss
