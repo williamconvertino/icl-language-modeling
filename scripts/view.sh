@@ -1,0 +1,1 @@
+squeue --user=$USER --format="%.30j %.10i %.3M"
