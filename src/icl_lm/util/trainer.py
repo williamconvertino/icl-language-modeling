@@ -83,6 +83,8 @@ class Trainer:
         prev_val_loss = float('inf')
         patience = 2
         patience_counter = 0
+        
+        resuming = self.config.num_save_steps is not None
 
         for epoch in range(self.checkpointing.current_epoch + 1, self.config.epochs + 1):
             self.model.train()
@@ -92,6 +94,12 @@ class Trainer:
 
             pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}")
             for i, batch in enumerate(pbar):
+                
+                if resuming and i < self.checkpointing.current_step:
+                    continue
+                else:
+                    resuming = False
+                
                 batch = batch.to(self.device)
                 self.optimizer.zero_grad()
 

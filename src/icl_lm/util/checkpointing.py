@@ -15,6 +15,7 @@ class Checkpointing:
 
         self.best_val_loss = self._get_initial_best_val_loss()
         self.current_epoch = 0
+        self.current_step = 0
 
     def _get_initial_best_val_loss(self):
         best_ckpts = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
@@ -26,7 +27,7 @@ class Checkpointing:
                 best_val = min(best_val, val)
         return best_val
 
-    def _save(self, filename, epoch=None, val_loss=None):
+    def _save(self, filename, epoch=None, val_loss=None, step_in_epoch=None):
         path = os.path.join(self.checkpoint_dir, filename)
         checkpoint = {"model": self.model.state_dict()}
         if self.optimizer:
@@ -37,7 +38,10 @@ class Checkpointing:
             checkpoint["epoch"] = epoch
         if val_loss is not None:
             checkpoint["val_loss"] = val_loss
+        if step_in_epoch is not None:
+            checkpoint["step_in_epoch"] = step_in_epoch
         torch.save(checkpoint, path)
+
 
     def save_checkpoint(self, name, val_loss):
         filename = f"{name}_val={val_loss:.4f}.pt"
@@ -63,9 +67,10 @@ class Checkpointing:
         self._save(filename, epoch=epoch, val_loss=val_loss)
         
     def save_step(self, total_step, epoch, step_in_epoch, val_loss):
-        assert self.optimizer is not None and self.scheduler is not None, "Optimizer and scheduler must be defined to save step checkpoint."
+        assert self.optimizer is not None and self.scheduler is not None
         filename = f"step_{total_step}_epoch_{epoch}_step_{step_in_epoch}_val={val_loss:.4f}.pt"
-        self._save(filename, epoch=epoch, val_loss=val_loss)
+        self._save(filename, epoch=epoch, val_loss=val_loss, step_in_epoch=step_in_epoch)
+
 
     def load_step(self, total_step=None):
         pattern = os.path.join(self.checkpoint_dir, "step_*_epoch_*_step_*_val=*.pt")
@@ -102,6 +107,7 @@ class Checkpointing:
             self.scheduler.load_state_dict(state["scheduler"])
 
         self.current_epoch = state.get("epoch", 0)
+        self.current_step = state.get("step_in_epoch", 0)
         
     def load_best(self):
         best_ckpts = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
