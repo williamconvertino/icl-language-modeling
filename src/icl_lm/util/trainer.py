@@ -95,7 +95,7 @@ class Trainer:
             pbar = tqdm(self.train_dataloader, desc=f"Epoch {epoch}")
             for i, batch in enumerate(pbar):
                 
-                if resuming and epoch == self.checkpointing.current_epoch and i < self.checkpointing.current_step:
+                if resuming and epoch == self.checkpointing.current_epoch and i <= self.checkpointing.current_step:
                     continue
                 else:
                     resuming = False
