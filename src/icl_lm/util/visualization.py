@@ -45,6 +45,7 @@ class Visualizer:
 
     def plot(self):
         all_data = self._gather_losses()
+        COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
         if self.mode == "lr":
             model_name = self.config.model.name if hasattr(self.config.model, "name") else self.config.model
@@ -52,11 +53,20 @@ class Visualizer:
                 print(f"No data found for model '{model_name}'")
                 return
 
-            plt.figure(figsize=(10, 6))
+            curves = []
             for lr, values in all_data[model_name].items():
                 epochs, losses = zip(*values)
                 losses = self._maybe_convert(losses)
-                plt.plot(epochs, losses, label=f"lr={lr}")
+                final_loss = losses[-1]
+                label = f"lr={lr}"
+                curves.append((final_loss, epochs, losses, label))
+
+            curves.sort(reverse=True, key=lambda x: x[0])  # Worst loss to best
+
+            plt.figure(figsize=(10, 6))
+            for i, (_, epochs, losses, label) in enumerate(curves):
+                color = COLORS[i % len(COLORS)]
+                plt.plot(epochs, losses, label=label, color=color)
 
             ylabel = "Validation Perplexity" if self.metric == "perplexity" else "Validation Loss"
             plt.title(f"{model_name} – {ylabel} vs Epoch")
@@ -70,19 +80,31 @@ class Visualizer:
             print(f"Saved plot to {save_path}")
 
         elif self.mode == "model":
-            plt.figure(figsize=(10, 6))
+            curves = []
             for model, lr_dict in all_data.items():
-                best_lr, best_final_loss = None, float("inf")
+                best_lr, best_values = None, None
+                best_final_loss = float("inf")
+
                 for lr, values in lr_dict.items():
                     final_loss = values[-1][1]
                     if final_loss < best_final_loss:
                         best_final_loss = final_loss
                         best_lr = lr
+                        best_values = values
 
-                if best_lr:
-                    epochs, losses = zip(*lr_dict[best_lr])
+                if best_values:
+                    epochs, losses = zip(*best_values)
                     losses = self._maybe_convert(losses)
-                    plt.plot(epochs, losses, label=f"{model} (lr={best_lr})")
+                    final_loss = losses[-1]
+                    label = f"{model} (lr={best_lr})"
+                    curves.append((final_loss, epochs, losses, label))
+
+            curves.sort(reverse=True, key=lambda x: x[0])
+
+            plt.figure(figsize=(10, 6))
+            for i, (_, epochs, losses, label) in enumerate(curves):
+                color = COLORS[i % len(COLORS)]
+                plt.plot(epochs, losses, label=label, color=color)
 
             ylabel = "Validation Perplexity" if self.metric == "perplexity" else "Validation Loss"
             plt.title(f"Best LR – {ylabel} vs Epoch per Model")
