@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=h200_train
 #SBATCH --mem=32G
-#SBATCH --time=120:00:00
+#SBATCH --time=72:00:00
 #SBATCH --gres=gpu:h200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --account=h200ea
