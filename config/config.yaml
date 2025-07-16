@@ -3,6 +3,7 @@ defaults:
   - training: base
   - generation: base
   - dataset: tinystories
+  - visualization: base
   - _self_
 
 hydra:

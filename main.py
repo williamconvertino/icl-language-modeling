@@ -9,6 +9,7 @@ from icl_lm.data.tokenizer import Tokenizer
 from icl_lm.util.trainer import Trainer
 from icl_lm.util.generator import Generator
 from icl_lm.util.llm_eval import Evaluator
+from icl_lm.util.visualization import Visualizer
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
 def main(config):
@@ -62,6 +63,9 @@ def main(config):
             raise ValueError(f"Unknown checkpoint type: {checkpoint_type}")
 
         generator.generate()
+    elif config.mode == "visualize":
+        visualizer = Visualizer(config)
+        visualizer.plot()
     else:
         raise ValueError(f"Unsupported mode: {config.mode}")
 
