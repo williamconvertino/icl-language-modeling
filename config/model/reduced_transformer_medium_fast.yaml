@@ -6,7 +6,7 @@ _target_: icl_lm.models.ReducedTransformerFast
 name: reduced_transformer_medium_fast
 
 # To keep parameter count consistent
-n_layers: 24
+n_layers: 36
 
 hidden_dim: 1024
 embed_dim: 1024

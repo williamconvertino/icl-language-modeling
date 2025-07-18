@@ -71,7 +71,7 @@ class TransformerBlock(nn.Module):
         x = x + self.mlp(self.ln_mlp(x))
         return x
 
-class TransformerFast(LMBase):
+class ReducedTransformerFast(LMBase):
     def __init__(self, config):
         super().__init__()
         self.config = config
