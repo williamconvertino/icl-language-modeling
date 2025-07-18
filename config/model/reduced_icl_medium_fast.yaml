@@ -1,0 +1,20 @@
+defaults:
+  - icl_medium
+  - _self_
+
+_target_: icl_lm.models.ReducedICLFast
+name: reduced_icl_medium_fast
+
+# To keep parameter count consistent
+n_layers: 36
+
+hidden_dim_phi: 512
+hidden_dim_f: 1024
+
+embed_dim_phi: 512
+embed_dim_f: 1024
+
+# Actual hidden dim = mlp_dim_phi * 4,
+# kept like this for consistency with above values
+mlp_dim_phi: 512
+mlp_dim_f: 1024
