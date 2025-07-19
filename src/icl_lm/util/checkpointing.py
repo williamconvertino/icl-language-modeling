@@ -9,7 +9,7 @@ class Checkpointing:
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.device = device
-        
+
         self.checkpoint_dir = checkpoint_dir
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
@@ -48,7 +48,7 @@ class Checkpointing:
 
     def save_epoch(self, epoch, val_loss):
         assert self.optimizer is not None and self.scheduler is not None
-        filename = f"epoch_{epoch}_val={val_loss:.4f}.pt"
+        filename = f"epoch_{epoch:03d}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss)
         self.current_epoch = epoch
 
@@ -59,12 +59,12 @@ class Checkpointing:
         old_best = glob(os.path.join(self.checkpoint_dir, "best_e*_val=*.pt"))
         for f in old_best:
             os.remove(f)
-        filename = f"best_e{epoch}_val={val_loss:.4f}.pt"
+        filename = f"best_e{epoch:03d}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss)
 
     def save_step(self, epoch, step_in_epoch, val_loss):
         assert self.optimizer is not None and self.scheduler is not None
-        filename = f"epoch_{epoch}_step_{step_in_epoch}_val={val_loss:.4f}.pt"
+        filename = f"epoch_{epoch:03d}_step_{step_in_epoch:07d}_val={val_loss:.4f}.pt"
         self._save(filename, epoch=epoch, val_loss=val_loss, step_in_epoch=step_in_epoch)
 
     def load_step(self, epoch=None, step_in_epoch=None):
@@ -82,7 +82,7 @@ class Checkpointing:
             return -1, -1
 
         if epoch is not None and step_in_epoch is not None:
-            matches = [p for p in step_ckpts if f"epoch_{epoch}_step_{step_in_epoch}_" in p]
+            matches = [p for p in step_ckpts if f"epoch_{epoch:03d}_step_{step_in_epoch:07d}_" in p]
             if not matches:
                 print(f"No checkpoint found for epoch {epoch}, step {step_in_epoch}")
                 return
@@ -144,7 +144,7 @@ class Checkpointing:
         print(f"Loaded most recent step checkpoint from {most_recent}")
 
     def load_epoch(self, epoch_number):
-        pattern = os.path.join(self.checkpoint_dir, f"epoch_{epoch_number}_val=*.pt")
+        pattern = os.path.join(self.checkpoint_dir, f"epoch_{epoch_number:03d}_val=*.pt")
         matching_ckpts = glob(pattern)
         if not matching_ckpts:
             print(f"No checkpoint found for epoch {epoch_number}")

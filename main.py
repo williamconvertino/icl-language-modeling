@@ -41,8 +41,6 @@ def main(config):
 
     if config.mode == "train":
         trainer = Trainer(config.training, model, splits, tokenizer, checkpoint_dir, device)
-        if config.training.resume:
-            trainer.checkpointing.load_recent()
         trainer.train()
     elif config.mode == "eval":
         evaluator = Evaluator(config.generation, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device)
