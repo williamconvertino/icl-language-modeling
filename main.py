@@ -8,7 +8,8 @@ from omegaconf import OmegaConf
 from icl_lm.data.tokenizer import Tokenizer
 from icl_lm.util.trainer import Trainer
 from icl_lm.util.generator import Generator
-from icl_lm.util.llm_eval import Evaluator
+from icl_lm.util.llm_eval import LLMEvaluator
+from icl_lm.util.evaluator import Evaluator
 from icl_lm.util.visualization import Visualizer
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
@@ -43,7 +44,10 @@ def main(config):
         trainer = Trainer(config.training, model, splits, tokenizer, checkpoint_dir, device)
         trainer.train()
     elif config.mode == "eval":
-        evaluator = Evaluator(config.generation, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device)
+        evaluator = Evaluator(config.training, model, splits, tokenizer, checkpoint_dir, device)
+        evaluator.evaluate()
+    elif config.mode == "llm_eval":
+        evaluator = LLMEvaluator(config.generation, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device)
         evaluator.evaluate()
     elif config.mode == "generate":
         generator = Generator(config.generation, model, splits, tokenizer, checkpoint_dir, generation_dir, device)

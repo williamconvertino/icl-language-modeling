@@ -69,7 +69,7 @@ Format your response as follows:
 Provide your assessment below:
 """
 
-class Evaluator:
+class LLMEvaluator:
     def __init__(self, config, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device):
         self.config = config
         self.model = model
