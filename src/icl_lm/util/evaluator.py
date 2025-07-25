@@ -38,7 +38,6 @@ class Evaluator:
             checkpoint_dir=checkpoint_dir,
             device=self.device
         )
-        self.checkpointing.load_recent()
 
         self.autocast_dtype = getattr(torch, config.precision)
 

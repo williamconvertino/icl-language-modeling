@@ -45,7 +45,21 @@ def main(config):
         trainer = Trainer(config.training, model, splits, tokenizer, checkpoint_dir, device)
         trainer.train()
     elif config.mode == "eval":
+        
         evaluator = Evaluator(config.training, model, splits, tokenizer, checkpoint_dir, eval_dir, device)
+        
+        checkpoint_type = config.generation.checkpoint
+
+        if checkpoint_type == "best":
+            evaluator.checkpointing.load_best()
+        elif checkpoint_type == "recent":
+            evaluator.checkpointing.load_recent()
+        elif checkpoint_type.startswith("epoch_"):
+            epoch_num = int(checkpoint_type.split("_")[1])
+            evaluator.checkpointing.load_epoch(epoch_num)
+        elif checkpoint_type is not None and checkpoint_type != "":
+            raise ValueError(f"Unknown checkpoint type: {checkpoint_type}")
+        
         evaluator.evaluate()
     elif config.mode == "llm_eval":
         evaluator = LLMEvaluator(config.generation, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device)
