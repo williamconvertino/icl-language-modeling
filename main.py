@@ -36,7 +36,8 @@ def main(config):
 
     checkpoint_dir = os.path.join("outputs", "checkpoints", config.dataset.name, model.name, str(config.training.optimizer.lr))
     generation_dir = os.path.join("outputs", "generations", config.dataset.name, model.name, str(config.training.optimizer.lr))
-    llm_eval_dir = os.path.join("outputs", "llm_eval", config.dataset.name, "baseline") if config.generation.use_baseline else os.path.join("outputs", "llm_eval", config.dataset.name, model.name, str(config.training.optimizer.lr))
+    llm_eval_dir = os.path.join("outputs", "eval", config.dataset.name, model.name, str(config.training.optimizer.lr))
+    eval_dir = os.path.join("outputs", "llm_eval", config.dataset.name, "baseline") if config.generation.use_baseline else os.path.join("outputs", "llm_eval", config.dataset.name, model.name, str(config.training.optimizer.lr))
 
     device = torch.device(config.device)
 
@@ -44,7 +45,7 @@ def main(config):
         trainer = Trainer(config.training, model, splits, tokenizer, checkpoint_dir, device)
         trainer.train()
     elif config.mode == "eval":
-        evaluator = Evaluator(config.training, model, splits, tokenizer, checkpoint_dir, device)
+        evaluator = Evaluator(config.training, model, splits, tokenizer, checkpoint_dir, eval_dir, device)
         evaluator.evaluate()
     elif config.mode == "llm_eval":
         evaluator = LLMEvaluator(config.generation, model, splits, tokenizer, checkpoint_dir, llm_eval_dir, device)
